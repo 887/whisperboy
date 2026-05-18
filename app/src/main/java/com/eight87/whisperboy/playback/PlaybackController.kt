@@ -379,6 +379,16 @@ internal class PlaybackController(
                     connected.value = true
                     restartTickerIfNeeded()
                     flushPendingActions(c)
+                    // Cold-start resume: if nothing is targeted and the service has no
+                    // items either (fresh process, no headphone-button wake), prime the
+                    // mini-player + theme context with the most-recently-played book so
+                    // the user lands back where they left off. Actual MediaItems aren't
+                    // loaded yet — first user transport (play / playChapter) lazy-calls
+                    // [playBookFromPosition] to materialise them. Seeded position drives
+                    // the scrubber + chapter highlight so the UI looks "warm" immediately.
+                    if (targetedBookId.value == null && c.mediaItemCount == 0) {
+                        applicationScope.launch { primeLastPlayedBook() }
+                    }
                 } catch (_: Throwable) {
                     // Connection failed. Schedule a single linear-backoff retry; Media3
                     // typically restarts the service on the first transport command anyway,
@@ -520,20 +530,32 @@ internal class PlaybackController(
 
     // ---------------------------------------------------------------- TransportCommands
 
-    override suspend fun play() = onMain { c ->
-        // F.4 — if the player has been paused for more than the auto-rewind threshold, nudge the
-        // playhead back by `autoRewindMs` before resuming. Coerces at 0 so books that paused near
-        // the start don't seek negative.
-        val pausedAt = pausedAtEpochMs
-        pausedAtEpochMs = null
-        if (pausedAt != null && !c.isPlaying) {
-            val idleMs = System.currentTimeMillis() - pausedAt
-            if (idleMs > AUTO_REWIND_THRESHOLD_MS && autoRewindMs > 0L) {
-                val target = (c.currentPosition - autoRewindMs).coerceAtLeast(0L)
-                c.seekTo(target)
-            }
+    override suspend fun play() {
+        // Cold-start: targeted book is set (via [primeLastPlayedBook]) but no MediaItems
+        // have been loaded yet. `c.play()` would no-op silently; instead, lazy-materialise
+        // items from the saved position so the user hears their book.
+        var count = 0
+        onMain { c -> count = c.mediaItemCount }
+        val targeted = targetedBookId.value
+        if (count == 0 && targeted != null) {
+            playBook(targeted)
+            return
         }
-        c.play()
+        onMain { c ->
+            // F.4 — if the player has been paused for more than the auto-rewind threshold, nudge the
+            // playhead back by `autoRewindMs` before resuming. Coerces at 0 so books that paused near
+            // the start don't seek negative.
+            val pausedAt = pausedAtEpochMs
+            pausedAtEpochMs = null
+            if (pausedAt != null && !c.isPlaying) {
+                val idleMs = System.currentTimeMillis() - pausedAt
+                if (idleMs > AUTO_REWIND_THRESHOLD_MS && autoRewindMs > 0L) {
+                    val target = (c.currentPosition - autoRewindMs).coerceAtLeast(0L)
+                    c.seekTo(target)
+                }
+            }
+            c.play()
+        }
     }
     override suspend fun pause() = onMain { it.pause() }
 
@@ -568,21 +590,41 @@ internal class PlaybackController(
         positionMs.value = positionInBookMs
     }
 
-    override suspend fun playChapter(chapterIndex: Int, positionInBookMs: Long) = onMain { c ->
-        val count = c.mediaItemCount
-        if (count <= 0) return@onMain
-        if (count == 1) {
-            // SingleFile: one MediaItem; seek absolute. Position drives chapter detection.
-            c.seekTo(0, positionInBookMs.coerceAtLeast(0L))
-            positionMs.value = positionInBookMs
-        } else {
-            // MultiFile: one MediaItem per chapter; seek by index.
-            val safe = chapterIndex.coerceIn(0, count - 1)
-            c.seekTo(safe, 0L)
-            positionMs.value = 0L
-            playerSnapshot.update { it.copy(currentItemIndex = safe, currentMediaId = c.currentMediaItem?.mediaId) }
+    override suspend fun playChapter(chapterIndex: Int, positionInBookMs: Long) {
+        // Cold-start fallback: nothing loaded yet but the UI knows which book this chapter
+        // belongs to. Boot via [playBookFromPosition] so items get materialised at the
+        // requested chapter offset in one shot.
+        var count = 0
+        onMain { c -> count = c.mediaItemCount }
+        val targeted = targetedBookId.value
+        if (count == 0 && targeted != null) {
+            playBookFromPosition(targeted, positionInBookMs)
+            return
         }
-        if (!c.isPlaying) c.play()
+        onMain { c ->
+            val n = c.mediaItemCount
+            if (n <= 0) return@onMain
+            if (n == 1) {
+                // SingleFile: one MediaItem; seek absolute. Position drives chapter detection.
+                c.seekTo(0, positionInBookMs.coerceAtLeast(0L))
+                positionMs.value = positionInBookMs
+            } else {
+                // MultiFile: one MediaItem per chapter; seek by index. Read the new mediaId
+                // via `getMediaItemAt(safe)` rather than `c.currentMediaItem` — the latter
+                // races with the async item-transition and can still report the old chapter
+                // immediately after `seekTo`.
+                val safe = chapterIndex.coerceIn(0, n - 1)
+                c.seekTo(safe, 0L)
+                positionMs.value = 0L
+                playerSnapshot.update {
+                    it.copy(
+                        currentItemIndex = safe,
+                        currentMediaId = c.getMediaItemAt(safe).mediaId,
+                    )
+                }
+            }
+            if (!c.isPlaying) c.play()
+        }
     }
 
     override suspend fun rewind() = onMain { c ->
@@ -681,6 +723,32 @@ internal class PlaybackController(
             remaining -= ch.durationMs
         }
         startPlayback(book, chapters, startMs = remaining, startIndex = idx)
+    }
+
+    /**
+     * Cold-start resume helper. Looks up the most-recently-played active book and seeds
+     * [targetedBookId] + [positionMs] + [playerSnapshot] so the mini-player, theme, and
+     * player screen all render the book the user was last listening to — without touching
+     * the MediaController (no items loaded, no audio output). The first transport command
+     * (`play` / `playChapter`) sees `mediaItemCount == 0` and lazy-materialises items via
+     * [playBookFromPosition].
+     */
+    private suspend fun primeLastPlayedBook() {
+        val candidate = bookSource.observeBooks().firstOrNull()
+            ?.filter { it.active && it.lastPlayedAt != null }
+            ?.maxByOrNull { it.lastPlayedAt ?: 0L }
+            ?: return
+        if (targetedBookId.value != null) return
+        val chapters = chapterSource.chaptersFor(candidate.bookId)
+        if (chapters.isEmpty()) return
+        val chapterStart = chapters
+            .getOrNull(candidate.currentChapterIndex.coerceIn(0, chapters.lastIndex))
+            ?.positionInBookMs ?: 0L
+        positionMs.value = (chapterStart + candidate.positionInChapterMs).coerceAtLeast(0L)
+        playerSnapshot.update {
+            it.copy(currentItemIndex = candidate.currentChapterIndex.coerceAtLeast(0))
+        }
+        targetedBookId.value = candidate.bookId
     }
 
     private suspend fun startPlayback(
