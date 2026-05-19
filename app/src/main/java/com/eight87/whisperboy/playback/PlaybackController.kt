@@ -531,30 +531,46 @@ internal class PlaybackController(
     // ---------------------------------------------------------------- TransportCommands
 
     override suspend fun play() {
-        // Cold-start: targeted book is set (via [primeLastPlayedBook]) but no MediaItems
-        // have been loaded yet. `c.play()` would no-op silently; instead, lazy-materialise
-        // items from the saved position so the user hears their book.
+        // Decision logic lives in [decidePlay] (pure, unit-tested); this is the thin
+        // dispatcher. Reading `c.mediaItemCount` and `c.playbackState` requires Main, so
+        // we sample them once via [onMain].
         var count = 0
-        onMain { c -> count = c.mediaItemCount }
-        val targeted = targetedBookId.value
-        if (count == 0 && targeted != null) {
-            playBook(targeted)
-            return
-        }
+        var playbackState = androidx.media3.common.Player.STATE_IDLE
         onMain { c ->
-            // F.4 — if the player has been paused for more than the auto-rewind threshold, nudge the
-            // playhead back by `autoRewindMs` before resuming. Coerces at 0 so books that paused near
-            // the start don't seek negative.
-            val pausedAt = pausedAtEpochMs
-            pausedAtEpochMs = null
-            if (pausedAt != null && !c.isPlaying) {
-                val idleMs = System.currentTimeMillis() - pausedAt
-                if (idleMs > AUTO_REWIND_THRESHOLD_MS && autoRewindMs > 0L) {
-                    val target = (c.currentPosition - autoRewindMs).coerceAtLeast(0L)
-                    c.seekTo(target)
+            count = c.mediaItemCount
+            playbackState = c.playbackState
+        }
+        val decision = decidePlay(count, targetedBookId.value)
+        when (decision) {
+            is PlayAction.BootBook -> playBook(decision.bookId)
+            PlayAction.Idle -> Unit
+            PlayAction.Resume -> {
+                // STATE_IDLE means the controller has items but has not been prepared
+                // (service was killed, restored controller, etc.). c.play() would no-op
+                // — re-call playBook so prepare() + playWhenReady fire fresh.
+                if (playbackState == androidx.media3.common.Player.STATE_IDLE) {
+                    val targeted = targetedBookId.value
+                    if (targeted != null) {
+                        playBook(targeted)
+                        return
+                    }
+                }
+                onMain { c ->
+                    // F.4 — if the player has been paused for more than the auto-rewind threshold, nudge the
+                    // playhead back by `autoRewindMs` before resuming. Coerces at 0 so books that paused near
+                    // the start don't seek negative.
+                    val pausedAt = pausedAtEpochMs
+                    pausedAtEpochMs = null
+                    if (pausedAt != null && !c.isPlaying) {
+                        val idleMs = System.currentTimeMillis() - pausedAt
+                        if (idleMs > AUTO_REWIND_THRESHOLD_MS && autoRewindMs > 0L) {
+                            val target = (c.currentPosition - autoRewindMs).coerceAtLeast(0L)
+                            c.seekTo(target)
+                        }
+                    }
+                    c.play()
                 }
             }
-            c.play()
         }
     }
     override suspend fun pause() = onMain { it.pause() }
@@ -591,39 +607,32 @@ internal class PlaybackController(
     }
 
     override suspend fun playChapter(chapterIndex: Int, positionInBookMs: Long) {
-        // Cold-start fallback: nothing loaded yet but the UI knows which book this chapter
-        // belongs to. Boot via [playBookFromPosition] so items get materialised at the
-        // requested chapter offset in one shot.
+        // Pure decision in [decideChapterTap]; this is the thin dispatcher.
         var count = 0
         onMain { c -> count = c.mediaItemCount }
-        val targeted = targetedBookId.value
-        if (count == 0 && targeted != null) {
-            playBookFromPosition(targeted, positionInBookMs)
-            return
-        }
-        onMain { c ->
-            val n = c.mediaItemCount
-            if (n <= 0) return@onMain
-            if (n == 1) {
-                // SingleFile: one MediaItem; seek absolute. Position drives chapter detection.
-                c.seekTo(0, positionInBookMs.coerceAtLeast(0L))
-                positionMs.value = positionInBookMs
-            } else {
-                // MultiFile: one MediaItem per chapter; seek by index. Read the new mediaId
-                // via `getMediaItemAt(safe)` rather than `c.currentMediaItem` — the latter
-                // races with the async item-transition and can still report the old chapter
-                // immediately after `seekTo`.
-                val safe = chapterIndex.coerceIn(0, n - 1)
-                c.seekTo(safe, 0L)
+        when (val decision = decideChapterTap(count, targetedBookId.value, chapterIndex, positionInBookMs)) {
+            is ChapterTapAction.BootBookFromPosition ->
+                playBookFromPosition(decision.bookId, decision.positionInBookMs)
+            is ChapterTapAction.SeekSingleFile -> onMain { c ->
+                c.seekTo(0, decision.positionInBookMs)
+                positionMs.value = decision.positionInBookMs
+                if (!c.isPlaying) c.play()
+            }
+            is ChapterTapAction.SeekMultiFile -> onMain { c ->
+                c.seekTo(decision.index, 0L)
                 positionMs.value = 0L
+                // Read mediaId via `getMediaItemAt(index)` rather than
+                // `c.currentMediaItem` — the latter races with the async
+                // item-transition and can still report the old chapter.
                 playerSnapshot.update {
                     it.copy(
-                        currentItemIndex = safe,
-                        currentMediaId = c.getMediaItemAt(safe).mediaId,
+                        currentItemIndex = decision.index,
+                        currentMediaId = c.getMediaItemAt(decision.index).mediaId,
                     )
                 }
+                if (!c.isPlaying) c.play()
             }
-            if (!c.isPlaying) c.play()
+            ChapterTapAction.Idle -> Unit
         }
     }
 
