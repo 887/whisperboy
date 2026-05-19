@@ -58,11 +58,11 @@ BUILD_OK=false
 GH_RELEASE_OK=false
 INSTALL_OK=false
 
-# Version + SHA tag for the artifact name. Stamped from local time as
-# yy.mm.dd + hhmmss (e.g. 26.05.19211200) so every build sorts
-# chronologically and Obtainium / GH Releases dedupe cleanly without
-# having to hand-bump versionName in build.gradle.kts.
-VERSION="$(date +%y.%m.%d%H%M%S)"
+# Version + SHA tag for the artifact name
+VERSION="$(awk -F'"' '/versionName/ {print $2; exit}' app/build.gradle.kts 2>/dev/null \
+    || awk -F'=' '/versionName/ {print $2; exit}' app/build.gradle.kts \
+    | tr -d ' "' || true)"
+[ -z "${VERSION}" ] && VERSION="0.1.0-dev"
 SHA7="$(git rev-parse --short=7 HEAD)"
 SHA_FULL="$(git rev-parse HEAD)"
 TAG="${VERSION}-${SHA7}"
