@@ -234,6 +234,14 @@ class WhisperboyLibrarySessionCallback(
     }
 
     private suspend fun resolveForPlayback(item: MediaItem): MediaItem? {
+        // Items arriving from our own PlaybackController.startPlayback already have a URI
+        // and are ready to hand to ExoPlayer. Only Auto / voice-search / lockscreen-resume
+        // entries arrive as URI-less placeholders (bookId-prefixed mediaId, or a searchQuery
+        // on requestMetadata) that need the lookup-then-replace dance below. Passing
+        // already-playable items through unchanged was the missing case — without this
+        // guard `mapNotNull` dropped every chapter and the session got zero items, which
+        // ExoPlayer reported as BUFFERING → ENDED with no error and no notification.
+        if (item.localConfiguration?.uri != null) return item
         val explicitId = item.mediaId.takeIf { it.startsWith(BOOK_PREFIX) }
             ?.removePrefix(BOOK_PREFIX)
         if (explicitId != null) {
