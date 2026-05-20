@@ -71,6 +71,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -753,6 +754,11 @@ private fun LibraryCoverGrid(
     // Section header index → label, for O(1) lookup while walking books.
     val headerByIndex = remember(sectionStarts) { sectionStarts.toMap() }
 
+    val onTapRef = rememberUpdatedState(onBookTap)
+    val onLongRef = rememberUpdatedState(onBookLongPress)
+    val stableTap: (String) -> Unit = remember { { id -> onTapRef.value(id) } }
+    val stableLong: (String) -> Unit = remember { { id -> onLongRef.value(id) } }
+
     Box(modifier = modifier) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 160.dp),
@@ -779,8 +785,8 @@ private fun LibraryCoverGrid(
                 ) {
                     BookGridTile(
                         book = book,
-                        onTap = { onBookTap(book.bookId) },
-                        onLongPress = { onBookLongPress(book.bookId) },
+                        onTap = stableTap,
+                        onLongPress = stableLong,
                     )
                 }
             }
@@ -825,6 +831,11 @@ private fun LibraryCoverList(
     val listState = rememberLazyListState()
     val headerByIndex = remember(sectionStarts) { sectionStarts.toMap() }
 
+    val onTapRef = rememberUpdatedState(onBookTap)
+    val onLongRef = rememberUpdatedState(onBookLongPress)
+    val stableTap: (String) -> Unit = remember { { id -> onTapRef.value(id) } }
+    val stableLong: (String) -> Unit = remember { { id -> onLongRef.value(id) } }
+
     Box(modifier = modifier) {
         LazyColumn(
             state = listState,
@@ -842,8 +853,8 @@ private fun LibraryCoverList(
                 item(key = "book:${book.bookId}", contentType = "book") {
                     BookListRow(
                         book = book,
-                        onTap = { onBookTap(book.bookId) },
-                        onLongPress = { onBookLongPress(book.bookId) },
+                        onTap = stableTap,
+                        onLongPress = stableLong,
                     )
                 }
             }
@@ -861,13 +872,16 @@ private fun LibraryCoverList(
 @Composable
 internal fun BookGridTile(
     book: BookEntity,
-    onTap: () -> Unit,
-    onLongPress: () -> Unit,
+    onTap: (String) -> Unit,
+    onLongPress: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onTap, onLongClick = onLongPress),
+            .combinedClickable(
+                onClick = { onTap(book.bookId) },
+                onLongClick = { onLongPress(book.bookId) },
+            ),
     ) {
         CoverArt(
             coverPath = book.coverPath,
@@ -897,15 +911,18 @@ internal fun BookGridTile(
 @Composable
 private fun BookListRow(
     book: BookEntity,
-    onTap: () -> Unit,
-    onLongPress: () -> Unit,
+    onTap: (String) -> Unit,
+    onLongPress: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onClick = onTap, onLongClick = onLongPress)
+            .combinedClickable(
+                onClick = { onTap(book.bookId) },
+                onLongClick = { onLongPress(book.bookId) },
+            )
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

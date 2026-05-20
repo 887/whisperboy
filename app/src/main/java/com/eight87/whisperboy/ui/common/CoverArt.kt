@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,7 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.crossfade
+import coil3.size.Precision
 import com.eight87.whisperboy.R
 import java.io.File
 
@@ -52,11 +53,18 @@ fun CoverArt(
     ) {
         if (coverPath != null) {
             val placeholder = rememberVectorPainter(Icons.AutoMirrored.Filled.MenuBook)
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+            val context = LocalContext.current
+            val request = remember(coverPath) {
+                val key = "book-cover-$coverPath"
+                ImageRequest.Builder(context)
                     .data(File(coverPath))
-                    .crossfade(80)
-                    .build(),
+                    .precision(Precision.INEXACT)
+                    .memoryCacheKey(key)
+                    .diskCacheKey(key)
+                    .build()
+            }
+            AsyncImage(
+                model = request,
                 contentDescription = stringResource(R.string.library_cover_placeholder_cd),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
