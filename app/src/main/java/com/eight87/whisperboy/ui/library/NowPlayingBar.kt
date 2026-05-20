@@ -162,24 +162,18 @@ fun NowPlayingBar(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(
-                onClick = { scope.launch { transport.rewind() } },
-                modifier = Modifier.size(40.dp),
-            ) {
+            IconButton(onClick = { scope.launch { transport.rewind() } }) {
                 Icon(
                     imageVector = Icons.Filled.FastRewind,
                     contentDescription = stringResource(R.string.player_rewind_cd, rewindSeconds),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
-            IconButton(
-                onClick = { scope.launch { transport.prevChapter() } },
-                modifier = Modifier.size(40.dp),
-            ) {
+            IconButton(onClick = { scope.launch { transport.prevChapter() } }) {
                 Icon(
                     imageVector = Icons.Filled.SkipPrevious,
                     contentDescription = stringResource(R.string.player_skip_prev_cd),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
             IconButton(
@@ -188,34 +182,27 @@ fun NowPlayingBar(
                         if (loaded.isPlaying) transport.pause() else transport.play()
                     }
                 },
-                modifier = Modifier.size(40.dp),
             ) {
                 Icon(
                     imageVector = if (loaded.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = stringResource(
                         if (loaded.isPlaying) R.string.player_pause_cd else R.string.player_play_cd,
                     ),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(36.dp),
                 )
             }
-            IconButton(
-                onClick = { scope.launch { transport.nextChapter() } },
-                modifier = Modifier.size(40.dp),
-            ) {
+            IconButton(onClick = { scope.launch { transport.nextChapter() } }) {
                 Icon(
                     imageVector = Icons.Filled.SkipNext,
                     contentDescription = stringResource(R.string.player_skip_next_cd),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
-            IconButton(
-                onClick = { scope.launch { transport.forward() } },
-                modifier = Modifier.size(40.dp),
-            ) {
+            IconButton(onClick = { scope.launch { transport.forward() } }) {
                 Icon(
                     imageVector = Icons.Filled.FastForward,
                     contentDescription = stringResource(R.string.player_forward_cd, forwardSeconds),
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
         }

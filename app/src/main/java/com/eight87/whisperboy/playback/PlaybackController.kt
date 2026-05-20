@@ -278,6 +278,32 @@ internal class PlaybackController(
         override fun onPlaybackParametersChanged(p: androidx.media3.common.PlaybackParameters) {
             playerSnapshot.update { it.copy(speed = p.speed) }
         }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            // Whisperboy was silently no-op'ing on transport when the underlying source failed
+            // (stale SAF URI, decoder error, missing file). Surface it loudly to logcat so
+            // "play button does nothing" reports come with diagnostic breadcrumbs.
+            android.util.Log.e(
+                "whisperboy.playback",
+                "Player error code=${error.errorCode} (${error.errorCodeName}): ${error.message}",
+                error,
+            )
+        }
+
+        override fun onPlaybackStateChanged(state: Int) {
+            android.util.Log.d(
+                "whisperboy.playback",
+                "playbackState=${stateName(state)} count=${controller?.mediaItemCount} idx=${controller?.currentMediaItemIndex} pwr=${controller?.playWhenReady}",
+            )
+        }
+    }
+
+    private fun stateName(s: Int): String = when (s) {
+        androidx.media3.common.Player.STATE_IDLE -> "IDLE"
+        androidx.media3.common.Player.STATE_BUFFERING -> "BUFFERING"
+        androidx.media3.common.Player.STATE_READY -> "READY"
+        androidx.media3.common.Player.STATE_ENDED -> "ENDED"
+        else -> "?($s)"
     }
 
     /**
@@ -540,10 +566,20 @@ internal class PlaybackController(
             count = c.mediaItemCount
             playbackState = c.playbackState
         }
-        val decision = decidePlay(count, targetedBookId.value)
+        var decision = decidePlay(count, targetedBookId.value)
+        if (decision == PlayAction.Idle) {
+            // Race: user tapped play before primeLastPlayedBook finished resolving the
+            // most-recently-played book on cold start. Prime synchronously and retry the
+            // decision so the tap isn't lost.
+            primeLastPlayedBook()
+            decision = decidePlay(count, targetedBookId.value)
+        }
         when (decision) {
             is PlayAction.BootBook -> playBook(decision.bookId)
-            PlayAction.Idle -> Unit
+            PlayAction.Idle -> android.util.Log.w(
+                "whisperboy.playback",
+                "play() Idle: no items, no targeted book, no recently-played candidate",
+            )
             PlayAction.Resume -> {
                 // STATE_IDLE means the controller has items but has not been prepared
                 // (service was killed, restored controller, etc.). c.play() would no-op
@@ -767,6 +803,10 @@ internal class PlaybackController(
         startIndex: Int,
     ) = onMain { c ->
         targetedBookId.value = book.bookId
+        android.util.Log.d(
+            "whisperboy.playback",
+            "startPlayback book=${book.bookId} chapters=${chapters.size} firstUri=${chapters.firstOrNull()?.fileUri} startIdx=$startIndex startMs=$startMs",
+        )
         // SingleFile vs MultiFile dispatch:
         //
         // SingleFile (all chapters share one fileUri, e.g. an .m4b with embedded chapter marks):
