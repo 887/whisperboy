@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -166,14 +167,14 @@ fun NowPlayingBar(
                 Icon(
                     imageVector = Icons.Filled.FastRewind,
                     contentDescription = stringResource(R.string.player_rewind_cd, rewindSeconds),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(32.dp),
                 )
             }
             IconButton(onClick = { scope.launch { transport.prevChapter() } }) {
                 Icon(
                     imageVector = Icons.Filled.SkipPrevious,
                     contentDescription = stringResource(R.string.player_skip_prev_cd),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(32.dp),
                 )
             }
             IconButton(
@@ -188,82 +189,40 @@ fun NowPlayingBar(
                     contentDescription = stringResource(
                         if (loaded.isPlaying) R.string.player_pause_cd else R.string.player_play_cd,
                     ),
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(44.dp),
                 )
             }
             IconButton(onClick = { scope.launch { transport.nextChapter() } }) {
                 Icon(
                     imageVector = Icons.Filled.SkipNext,
                     contentDescription = stringResource(R.string.player_skip_next_cd),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(32.dp),
                 )
             }
             IconButton(onClick = { scope.launch { transport.forward() } }) {
                 Icon(
                     imageVector = Icons.Filled.FastForward,
                     contentDescription = stringResource(R.string.player_forward_cd, forwardSeconds),
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(32.dp),
                 )
             }
         }
 
-        // Position / 2dp progress / duration row.
-        //
-        // Position-left, duration-right both in labelSmall + onSurfaceVariant @ 0.85f
-        // alpha (tonearmboy's mini-player shape, adapted to chapter-relative time
-        // since that's the audiobook-meaningful frame). The 2dp scaleX bar sits
-        // between them so it visually anchors the readout pair to the same line.
-        Row(
+        // Full-width 2dp progress strip pinned to the bottom of the bar — matches
+        // tonearmboy's MiniPlayer exactly (LinearProgressIndicator, no mm:ss labels).
+        // The strip stays visible at 0% (track color renders even when progress=0)
+        // and gives the user a glanceable position cue without the labels eating
+        // a whole text row of vertical space.
+        LinearProgressIndicator(
+            progress = progressFraction,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PositionReadout(loaded = loaded, showPosition = true)
-            Spacer(Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(2.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLowest),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(2.dp)
-                        .graphicsLayer {
-                            scaleX = progressFraction()
-                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
-                        }
-                        .background(MaterialTheme.colorScheme.primary),
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            PositionReadout(loaded = loaded, showPosition = false)
-        }
+                .height(2.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceContainer,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
     }
 }
 
-/**
- * Scoped readout child — re-reads the fast-ticking position field and renders
- * either the chapter-relative position (left) or the chapter duration (right).
- * Wrapping each side in its own composable keeps the per-tick recomposition off
- * the parent NowPlayingBar (cover / title / chapter / buttons all skip).
- */
-@Composable
-private fun PositionReadout(
-    loaded: PlaybackUiState.Loaded,
-    showPosition: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val chapterStartMs = loaded.currentChapter?.positionInBookMs ?: 0L
-    val chapterDurationMs = loaded.currentChapter?.durationMs ?: loaded.book.durationMs
-    val positionInChapterMs = (loaded.positionInBookMs - chapterStartMs).coerceAtLeast(0L)
-    Text(
-        text = if (showPosition) formatMmSs(positionInChapterMs) else formatMmSs(chapterDurationMs),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-        maxLines = 1,
-        modifier = modifier,
-    )
-}

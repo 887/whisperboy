@@ -531,86 +531,98 @@ private fun PlayerLoaded(
     val rewindSeconds by playbackSettings.rewindSeconds.collectAsStateWithLifecycle(initialValue = 30)
     val forwardSeconds by playbackSettings.forwardSeconds.collectAsStateWithLifecycle(initialValue = 30)
 
-    // Pinned-header player: cover / title / scrubber / transport stay visible at the top;
-    // only the chapter list scrolls below. No auto-scroll on open — the user's viewport is
-    // theirs from the moment the screen mounts. (Earlier shapes tried unified-scroll and
-    // scroll-to-current-chapter; both proved counter-intuitive — header gone on scroll,
-    // chapter tap yanked the viewport.)
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
+    // Unified-scroll player: cover / title / scrubber / transport are the first item in
+    // ONE LazyColumn; chapter rows are `items(...)` after them. Header scrolls off as the
+    // user pulls up — same shape tonearmboy uses for now-playing + queue. (Pinned-header
+    // was the earlier shape; user explicitly asked for unified scroll like tonearmboy.)
+    val chaptersFlow = remember(chapterSource, state.book.bookId) {
+        chapterSource.observeChaptersForBook(state.book.bookId)
+    }
+    val chapters by chaptersFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val currentChapterIndex = state.currentChapter?.chapterIndex ?: -1
+    val fallbackListState = rememberLazyListState()
+    val listState = chapterListState ?: fallbackListState
+
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(16.dp))
-            CoverArt(
-                coverPath = state.book.coverPath,
+        item(key = "player_header", contentType = "header") {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.55f)
-                    .aspectRatio(1f),
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = state.book.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = chapterDisplayTitle(state),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(16.dp))
-            PlayerScrubber(
-                positionInChapterMs = positionInChapter(state),
-                chapterDurationMs = chapterDurationMs,
-                onSeek = { newPositionInChapterMs ->
-                    val absolute = (state.currentChapter?.positionInBookMs ?: 0L) + newPositionInChapterMs
-                    scope.launch { transport.seekTo(absolute) }
-                },
-            )
-            Spacer(Modifier.height(8.dp))
-            PlayerTransport(
-                isPlaying = state.isPlaying,
-                rewindSeconds = rewindSeconds,
-                forwardSeconds = forwardSeconds,
-                onPlayPause = {
-                    scope.launch { if (state.isPlaying) transport.pause() else transport.play() }
-                },
-                onRewind = { scope.launch { transport.rewind() } },
-                onForward = { scope.launch { transport.forward() } },
-                onPrev = { scope.launch { transport.prevChapter() } },
-                onNext = { scope.launch { transport.nextChapter() } },
-                onSetRewindSeconds = { value ->
-                    scope.launch { playbackSettings.setRewindSeconds(value) }
-                },
-                onSetForwardSeconds = { value ->
-                    scope.launch { playbackSettings.setForwardSeconds(value) }
-                },
-            )
-            Spacer(Modifier.height(16.dp))
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(16.dp))
+                CoverArt(
+                    coverPath = state.book.coverPath,
+                    modifier = Modifier
+                        .fillMaxWidth(0.55f)
+                        .aspectRatio(1f),
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = state.book.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = chapterDisplayTitle(state),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(16.dp))
+                PlayerScrubber(
+                    positionInChapterMs = positionInChapter(state),
+                    chapterDurationMs = chapterDurationMs,
+                    onSeek = { newPositionInChapterMs ->
+                        val absolute = (state.currentChapter?.positionInBookMs ?: 0L) + newPositionInChapterMs
+                        scope.launch { transport.seekTo(absolute) }
+                    },
+                )
+                Spacer(Modifier.height(8.dp))
+                PlayerTransport(
+                    isPlaying = state.isPlaying,
+                    rewindSeconds = rewindSeconds,
+                    forwardSeconds = forwardSeconds,
+                    onPlayPause = {
+                        scope.launch { if (state.isPlaying) transport.pause() else transport.play() }
+                    },
+                    onRewind = { scope.launch { transport.rewind() } },
+                    onForward = { scope.launch { transport.forward() } },
+                    onPrev = { scope.launch { transport.prevChapter() } },
+                    onNext = { scope.launch { transport.nextChapter() } },
+                    onSetRewindSeconds = { value ->
+                        scope.launch { playbackSettings.setRewindSeconds(value) }
+                    },
+                    onSetForwardSeconds = { value ->
+                        scope.launch { playbackSettings.setForwardSeconds(value) }
+                    },
+                )
+                Spacer(Modifier.height(16.dp))
+            }
         }
-        ChapterQueue(
-            bookId = state.book.bookId,
-            currentChapterIndex = state.currentChapter?.chapterIndex ?: -1,
-            chapterSource = chapterSource,
-            listState = chapterListState,
-            onChapterTap = { chapterIndex, positionInBookMs ->
-                scope.launch { transport.playChapter(chapterIndex, positionInBookMs) }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        )
+        items(
+            items = chapters,
+            key = { it.chapterId },
+            contentType = { "chapter" },
+        ) { chapter ->
+            ChapterQueueRow(
+                chapter = chapter,
+                isActive = chapter.chapterIndex == currentChapterIndex,
+                onClick = {
+                    scope.launch { transport.playChapter(chapter.chapterIndex, chapter.positionInBookMs) }
+                },
+            )
+        }
     }
 }
 
