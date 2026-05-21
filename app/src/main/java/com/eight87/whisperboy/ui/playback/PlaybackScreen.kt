@@ -409,6 +409,11 @@ private fun AddBookmarkDialog(
     var text by remember(defaultTitle) { mutableStateOf(defaultTitle) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        // Cover-wallpaper / chrome-glass mode multiplies surfaceContainerHigh by
+        // chromeAlpha=0.5 (see Theme.kt), which makes the default AlertDialog surface
+        // see-through against the player behind. Force an opaque container — the
+        // RGB is already pre-tinted in blendSurface, we just want alpha=1.
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 1f),
         title = { Text(text = stringResource(R.string.bookmark_add_dialog_title)) },
         text = {
             OutlinedTextField(
@@ -756,9 +761,27 @@ internal fun PlayerScrubber(
 ) {
     val safeDuration = chapterDurationMs.coerceAtLeast(1L)
     val safePosition = positionInChapterMs.coerceIn(0L, safeDuration)
+    // Local drag value (tonearmboy Scrubber pattern). The slider used to call
+    // onSeek on every drag delta and drive its `value` directly off the live
+    // controller position; on release there was a window where the snap-derived
+    // chapter for the new absolute position briefly disagreed with the
+    // controller's currentItemIndex, so positionInChapter clamped to the OLD
+    // chapter's duration → slider visibly flashed at "finished" before the
+    // projection caught up. With this pattern the slider is visually driven by
+    // `dragValue` during the gesture; we call onSeek exactly once on release,
+    // and the `remember(positionInChapterMs)` key clears dragValue once the
+    // controller has emitted the new position. No mid-flight clamp, no flash.
+    var dragValue by remember(positionInChapterMs) { mutableStateOf<Float?>(null) }
+    val sliderValue = dragValue ?: safePosition.toFloat()
     Slider(
-        value = safePosition.toFloat(),
-        onValueChange = { onSeek(it.toLong()) },
+        value = sliderValue.coerceIn(0f, safeDuration.toFloat()),
+        onValueChange = { dragValue = it },
+        onValueChangeFinished = {
+            dragValue?.let { onSeek(it.toLong()) }
+            // Don't clear dragValue here — the `remember(positionInChapterMs)`
+            // key handles that once the new position lands. Clearing eagerly
+            // would re-introduce the flash.
+        },
         valueRange = 0f..safeDuration.toFloat(),
         enabled = chapterDurationMs > 0L,
         modifier = Modifier
@@ -767,7 +790,7 @@ internal fun PlayerScrubber(
     )
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            text = formatMmSs(safePosition),
+            text = formatMmSs(sliderValue.toLong().coerceIn(0L, safeDuration)),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -116,7 +116,13 @@ fun WhisperboyApp() {
             sleepTimerCommands = graph.sleepTimerCommands,
             sheetProgress = sheetProgress,
             onCollapse = closeSheet,
-            onViewBookmarksClick = { bookId -> backStack.add(BookmarkRoute(bookId)) },
+            onViewBookmarksClick = { bookId ->
+                // Collapse the sheet first — otherwise the fully-expanded player sits
+                // on top of the BookmarkRoute destination and tapping the button
+                // appears to "do nothing".
+                closeSheet()
+                backStack.add(BookmarkRoute(bookId))
+            },
         )
     }
 }

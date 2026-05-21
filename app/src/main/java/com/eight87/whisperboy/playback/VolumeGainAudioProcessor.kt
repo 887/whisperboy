@@ -50,8 +50,15 @@ class VolumeGainAudioProcessor : BaseAudioProcessor() {
 
     fun gainDb(): Float = gainDb
 
+    // Always-active when the encoding is one we can scale. Returning `false` at
+    // gainDb == 0 used to skip the processor at sink configure time; later
+    // gainDb changes from the UI then had no effect until the sink reconfigured
+    // (i.e. on format change), which is "slider does nothing" from the user's
+    // POV. At gainDb == 0 the multiplier is exactly 1f and queueInput is a
+    // bit-exact pass-through — the only cost of always-on is a sample-rate
+    // multiply we'd otherwise skip, which is negligible against decode + Sonic.
     override fun isActive(): Boolean =
-        gainDb != 0f && inputAudioFormat.encoding == C.ENCODING_PCM_16BIT
+        inputAudioFormat.encoding == C.ENCODING_PCM_16BIT
 
     override fun onConfigure(
         inputAudioFormat: AudioProcessor.AudioFormat,
