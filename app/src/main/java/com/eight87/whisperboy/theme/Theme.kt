@@ -62,6 +62,23 @@ val LocalCustomChromeTint = staticCompositionLocalOf<Color?> { null }
 val LocalTintByAlbumArt = staticCompositionLocalOf { true }
 
 /**
+ * CompositionLocal flagging whether the fullscreen blurred-cover
+ * background layer is active. Activity-root WhisperboyActivity reads
+ * this to decide whether to paint [AlbumArtBackground] behind the
+ * theme's transparent root surface; sheet/dialog hosts that overlay
+ * the library can read it to paint their own cover wallpaper layer
+ * so the user doesn't see the library through translucent chrome.
+ */
+val LocalAlbumArtBackgroundActive = staticCompositionLocalOf { false }
+
+/**
+ * CompositionLocal carrying the file:// URI (or null) of the
+ * currently-playing book's cover, for the activity / sheet bg
+ * layers to render.
+ */
+val LocalPlayingCoverUri = staticCompositionLocalOf<String?> { null }
+
+/**
  * Phase K.5 — reads the user's theme mode + dynamic-color preference
  * from [ThemeSettings] and applies them. The mode/flag flow into
  * `colorScheme` selection here; everything below stays unchanged from
@@ -94,6 +111,7 @@ fun WhisperboyTheme(
   val customBaseSeed by themeSettings.customBaseSeed.collectAsStateWithLifecycle(initialValue = 0L)
   val customChromeTint by themeSettings.customChromeTint.collectAsStateWithLifecycle(initialValue = 0L)
   val tintByAlbumArt by themeSettings.tintChromeByAlbumArt.collectAsStateWithLifecycle(initialValue = true)
+  val albumArtBackgroundEnabled by themeSettings.albumArtBackgroundEnabled.collectAsStateWithLifecycle(initialValue = true)
 
   val darkTheme = when (mode) {
     ThemeMode.Light -> false
@@ -136,7 +154,7 @@ fun WhisperboyTheme(
   // appeared to do nothing). 0.4 means "chrome is meaningfully tinted
   // toward the seed colour", visible at AMOLED dark with non-saturated
   // picks. Same surface ladder + same fraction tonearmboy validated.
-  val colorScheme = if (effectiveTint == null) baseScheme else baseScheme.copy(
+  val tintedScheme = if (effectiveTint == null) baseScheme else baseScheme.copy(
     surface = blendSurface(baseScheme.surface, effectiveTint, 0.4f),
     surfaceVariant = blendSurface(baseScheme.surfaceVariant, effectiveTint, 0.4f),
     background = blendSurface(baseScheme.background, effectiveTint, 0.4f),
@@ -148,10 +166,39 @@ fun WhisperboyTheme(
     secondaryContainer = blendSurface(baseScheme.secondaryContainer, effectiveTint, 0.4f),
   )
 
+  // Harmony-glass — ported from tonearmboy. When the album-art
+  // background layer is painting a blurred cover fullscreen behind
+  // the chrome:
+  //   - `background` (Scaffold container) → fully transparent, so
+  //     the scaffold's void band reveals the cover.
+  //   - `surface`, `surfaceContainerHigh`, `surfaceContainerHighest`
+  //     (chrome tier: TopAppBar, NowPlayingBar, dialogs, sheets) →
+  //     alpha 0.5 so the cover bleeds through but the tinted chrome
+  //     tier stays readable.
+  //   - other surface tokens stay opaque — Cards / placeholder
+  //     containers need solid backgrounds for legibility.
+  val coverPath = (nowPlayingState.state.value as? com.eight87.whisperboy.playback.PlaybackUiState.Loaded)?.book?.coverPath
+  val backgroundActive = tintByAlbumArt && albumArtBackgroundEnabled && !coverPath.isNullOrBlank()
+  val colorScheme = if (!backgroundActive) tintedScheme else {
+    val chromeAlpha = 0.5f
+    tintedScheme.copy(
+      background = Color.Transparent,
+      surface = tintedScheme.surface.copy(alpha = chromeAlpha),
+      surfaceContainerHigh = tintedScheme.surfaceContainerHigh.copy(alpha = chromeAlpha),
+      surfaceContainerHighest = tintedScheme.surfaceContainerHighest.copy(alpha = chromeAlpha),
+    )
+  }
+
+  val coverUri: String? = coverPath?.takeIf { it.isNotBlank() }?.let { path ->
+    if (path.startsWith("file:") || path.startsWith("content:") || path.startsWith("http")) path
+    else "file://$path"
+  }
   CompositionLocalProvider(
     LocalCustomChromeTint provides chromeTint,
     LocalTintByAlbumArt provides tintByAlbumArt,
     LocalAlbumPalette provides albumPalette,
+    LocalAlbumArtBackgroundActive provides backgroundActive,
+    LocalPlayingCoverUri provides coverUri,
   ) {
     // m3-expressive A.3 — `MaterialExpressiveTheme` pulls in the new
     // motion / typography / shape defaults (rounded extra-large group

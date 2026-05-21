@@ -116,6 +116,7 @@ private fun RenderEntry(entry: SettingsCatalogEntry, bindings: SettingsBindings)
         SettingsCatalog.ID_THEME_MODE -> ThemeModeRow(entry, bindings.themeSettings)
         SettingsCatalog.ID_BASE_THEME -> BaseThemeRow(entry, bindings.themeSettings)
         SettingsCatalog.ID_TINT_BY_ALBUM_ART -> TintByAlbumArtRow(entry, bindings.themeSettings)
+        SettingsCatalog.ID_ALBUM_ART_BACKGROUND -> AlbumArtBackgroundRow(entry, bindings.themeSettings)
         SettingsCatalog.ID_CUSTOM_CHROME_TINT -> CustomChromeTintRow(entry, bindings.themeSettings)
 
         SettingsCatalog.ID_DEFAULT_SPEED -> DefaultSpeedRow(entry, bindings.playbackSettings)
@@ -335,6 +336,21 @@ private fun TintByAlbumArtRow(entry: SettingsCatalogEntry, themeSettings: ThemeS
         subtitle = entry.subtitleRes?.let { stringResource(it) },
         checked = checked,
         onCheckedChange = { scope.launch { themeSettings.setTintChromeByAlbumArt(it) } },
+    )
+}
+
+@Composable
+private fun AlbumArtBackgroundRow(entry: SettingsCatalogEntry, themeSettings: ThemeSettings) {
+    val scope = rememberCoroutineScope()
+    val checked by themeSettings.albumArtBackgroundEnabled.collectAsStateWithLifecycle(initialValue = true)
+    SettingsToggleRow(
+        id = entry.id,
+        accent = entry.accent,
+        icon = entry.icon,
+        label = stringResource(entry.labelRes),
+        subtitle = entry.subtitleRes?.let { stringResource(it) },
+        checked = checked,
+        onCheckedChange = { scope.launch { themeSettings.setAlbumArtBackgroundEnabled(it) } },
     )
 }
 

@@ -121,6 +121,7 @@ object SettingsCatalog {
     const val ID_BASE_THEME = "appearance.base_theme"
     /** Toggle for `PlaybackScreen`'s Palette-from-cover tint. */
     const val ID_TINT_BY_ALBUM_ART = "appearance.tint_by_album_art"
+    const val ID_ALBUM_ART_BACKGROUND = "appearance.album_art_background"
     const val ID_CUSTOM_CHROME_TINT = "appearance.custom_chrome_tint"
 
     const val ID_DEFAULT_SPEED = "behaviour.default_speed"
@@ -181,6 +182,17 @@ object SettingsCatalog {
             labelRes = R.string.settings_catalog_tint_by_album_art_label,
             subtitleRes = R.string.settings_catalog_tint_by_album_art_subtitle,
             keywords = listOf("palette", "tint", "album", "cover", "art", "color"),
+            accent = LibraryAccent,
+        ),
+        SettingsCatalogEntry(
+            id = ID_ALBUM_ART_BACKGROUND,
+            section = Section.Appearance,
+            icon = Icons.Filled.Palette,
+            label = "Use album art as background",
+            subtitleEn = "Blur the playing cover behind the chrome (Harmony-style).",
+            labelRes = R.string.settings_catalog_album_art_background_label,
+            subtitleRes = R.string.settings_catalog_album_art_background_subtitle,
+            keywords = listOf("background", "blur", "glass", "harmony", "cover", "wallpaper"),
             accent = LibraryAccent,
         ),
         SettingsCatalogEntry(

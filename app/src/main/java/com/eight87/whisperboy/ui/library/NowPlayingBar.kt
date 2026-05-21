@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -103,10 +104,18 @@ fun NowPlayingBar(
     val bookDurationMs = loaded.book.durationMs.coerceAtLeast(1L)
     val progressFraction = { (loaded.positionInBookMs.toFloat() / bookDurationMs).coerceIn(0f, 1f) }
 
+    // Wrap in Surface (rather than `Modifier.background(surfaceContainerHigh)`)
+    // so `LocalContentColor` propagates to the transport-row IconButtons —
+    // Modifier.background paints a colour but doesn't set the content-color
+    // CompositionLocal, so the icons inherit the OUTER (often near-black
+    // against a tinted dark surface) colour and become invisible. Same
+    // "missing frame" fix tonearmboy got.
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         // Row 1 — info. Cover + title/chapter only. Drag + tap-to-expand gestures
         // live on this row (the transport row below has its own tap targets so a
@@ -223,6 +232,7 @@ fun NowPlayingBar(
             gapSize = 0.dp,
             drawStopIndicator = {},
         )
+    }
     }
 }
 

@@ -138,13 +138,19 @@ fun NowPlayingSheet(
     // (see [NowPlayingBar.onSheetDragDelta]).
     val sheetDraggable = rememberDraggableState { delta -> onSheetDragDelta(delta) }
 
+    val sheetBackgroundActive = com.eight87.whisperboy.theme.LocalAlbumArtBackgroundActive.current
+    val sheetCoverUri = com.eight87.whisperboy.theme.LocalPlayingCoverUri.current
+    val sheetShowCoverWallpaper = sheetBackgroundActive && !sheetCoverUri.isNullOrBlank()
     Box(modifier = modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(sheetHeightDp)
-                .background(MaterialTheme.colorScheme.surface)
+                .then(
+                    if (sheetShowCoverWallpaper) Modifier
+                    else Modifier.background(MaterialTheme.colorScheme.surface),
+                )
                 .clipToBounds()
                 .draggable(
                     state = sheetDraggable,
@@ -152,6 +158,15 @@ fun NowPlayingSheet(
                     onDragStopped = { onSheetDragSettle() },
                 ),
         ) {
+            // When the cover-wallpaper mode is active, paint a sheet-
+            // internal blurred cover so the sheet's translucent chrome
+            // doesn't reveal the library beneath. Mirrors tonearmboy.
+            if (sheetShowCoverWallpaper) {
+                com.eight87.whisperboy.theme.AlbumArtBackground(
+                    coverUri = sheetCoverUri,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             // Inner stack anchored to the TOP of the sheet at fixed
             // full-screen height — keeps the layout from reflowing as
             // the sheet height grows. Cross-faded alphas hide / reveal.

@@ -255,6 +255,8 @@
     <string name="settings_catalog_base_theme_custom_format">Custom color · #%1$06X</string>
     <string name="settings_catalog_tint_by_album_art_label">Tint chrome by album art</string>
     <string name="settings_catalog_tint_by_album_art_subtitle">Bias surfaces toward the playing book’s dominant color.</string>
+    <string name="settings_catalog_album_art_background_label">Use album art as background</string>
+    <string name="settings_catalog_album_art_background_subtitle">Blur the playing cover behind the chrome (Harmony-style).</string>
     <string name="settings_catalog_default_speed_label">Default speed</string>
     <string name="settings_catalog_default_skip_silence_label">Skip silence</string>
     <string name="settings_catalog_default_skip_silence_subtitle">Skip quiet pauses during playback.</string>

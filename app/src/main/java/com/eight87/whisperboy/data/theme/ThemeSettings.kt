@@ -3,6 +3,7 @@ package com.eight87.whisperboy.data.theme
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import com.eight87.whisperboy.data.settings.EnumSetting
 import com.eight87.whisperboy.data.settings.Setting
@@ -49,12 +50,32 @@ interface ThemeSettings {
      * `customChromeTint` (when non-zero) wins over this flag.
      */
     val tintChromeByAlbumArt: Flow<Boolean>
+    /**
+     * Whether the playing book's cover paints fullscreen as a blurred
+     * background behind the chrome (Harmony-style glass). Gated on
+     * [tintChromeByAlbumArt]; with both on, the activity root renders
+     * the cover as wallpaper and chrome surfaces become translucent
+     * to let it bleed through.
+     */
+    val albumArtBackgroundEnabled: Flow<Boolean>
 
     suspend fun setMode(mode: ThemeMode)
     suspend fun setDynamicColor(enabled: Boolean)
     suspend fun setCustomBaseSeed(rgb: Long)
     suspend fun setCustomChromeTint(rgb: Long)
     suspend fun setTintChromeByAlbumArt(enabled: Boolean)
+    suspend fun setAlbumArtBackgroundEnabled(enabled: Boolean)
+
+    /**
+     * One-shot upgrade migrations. Idempotent — guarded by version
+     * marker keys so a second invocation is a cheap no-op. Currently:
+     *
+     *  - V2: force-on the album-art chrome tint + background pair AND
+     *    clear `customChromeTint` (a pinned custom tint hard-overrides
+     *    the album palette, so an upgrader with any colour parked
+     *    there would otherwise see album-art tint silently no-op).
+     */
+    suspend fun runMigrations()
 }
 
 /**
@@ -65,7 +86,7 @@ interface ThemeSettings {
  * R.B.2 migration: each knob delegates to the [Setting] / [EnumSetting] factories.
  */
 class AndroidThemeSettings(
-    dataStore: DataStore<Preferences>,
+    private val dataStore: DataStore<Preferences>,
 ) : ThemeSettings {
 
     private val modeSetting: EnumSetting<ThemeMode> =
@@ -78,12 +99,15 @@ class AndroidThemeSettings(
         dataStore.setting(longPreferencesKey("custom_chrome_tint"), default = 0L)
     private val tintChromeByAlbumArtSetting: Setting<Boolean> =
         dataStore.setting(booleanPreferencesKey("tint_chrome_by_album_art"), default = true)
+    private val albumArtBackgroundEnabledSetting: Setting<Boolean> =
+        dataStore.setting(booleanPreferencesKey("album_art_background_enabled"), default = true)
 
     override val mode: Flow<ThemeMode> = modeSetting.flow
     override val dynamicColor: Flow<Boolean> = dynamicColorSetting.flow
     override val customBaseSeed: Flow<Long> = customBaseSeedSetting.flow
     override val customChromeTint: Flow<Long> = customChromeTintSetting.flow
     override val tintChromeByAlbumArt: Flow<Boolean> = tintChromeByAlbumArtSetting.flow
+    override val albumArtBackgroundEnabled: Flow<Boolean> = albumArtBackgroundEnabledSetting.flow
 
     override suspend fun setMode(mode: ThemeMode) = modeSetting.set(mode)
     override suspend fun setDynamicColor(enabled: Boolean) = dynamicColorSetting.set(enabled)
@@ -91,4 +115,18 @@ class AndroidThemeSettings(
     override suspend fun setCustomChromeTint(rgb: Long) = customChromeTintSetting.set(rgb)
     override suspend fun setTintChromeByAlbumArt(enabled: Boolean) =
         tintChromeByAlbumArtSetting.set(enabled)
+    override suspend fun setAlbumArtBackgroundEnabled(enabled: Boolean) =
+        albumArtBackgroundEnabledSetting.set(enabled)
+
+    override suspend fun runMigrations() {
+        val v2Marker = booleanPreferencesKey("album_art_visuals_defaulted_v2")
+        dataStore.edit { prefs ->
+            if (prefs[v2Marker] != true) {
+                prefs[booleanPreferencesKey("tint_chrome_by_album_art")] = true
+                prefs[booleanPreferencesKey("album_art_background_enabled")] = true
+                prefs[longPreferencesKey("custom_chrome_tint")] = 0L
+                prefs[v2Marker] = true
+            }
+        }
+    }
 }
