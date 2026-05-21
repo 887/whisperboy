@@ -167,14 +167,14 @@ fun NowPlayingBar(
                 Icon(
                     imageVector = Icons.Filled.FastRewind,
                     contentDescription = stringResource(R.string.player_rewind_cd, rewindSeconds),
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
             IconButton(onClick = { scope.launch { transport.prevChapter() } }) {
                 Icon(
                     imageVector = Icons.Filled.SkipPrevious,
                     contentDescription = stringResource(R.string.player_skip_prev_cd),
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
             IconButton(
@@ -189,21 +189,21 @@ fun NowPlayingBar(
                     contentDescription = stringResource(
                         if (loaded.isPlaying) R.string.player_pause_cd else R.string.player_play_cd,
                     ),
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
             IconButton(onClick = { scope.launch { transport.nextChapter() } }) {
                 Icon(
                     imageVector = Icons.Filled.SkipNext,
                     contentDescription = stringResource(R.string.player_skip_next_cd),
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
             IconButton(onClick = { scope.launch { transport.forward() } }) {
                 Icon(
                     imageVector = Icons.Filled.FastForward,
                     contentDescription = stringResource(R.string.player_forward_cd, forwardSeconds),
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }

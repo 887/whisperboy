@@ -499,10 +499,22 @@ internal class PlaybackController(
                 } else {
                     chapterAt(chapters, snap.currentItemIndex)
                 }
+                // SingleFile: `position` is already book-absolute. MultiFile: `position` is the
+                // controller's `currentPosition`, which Media3 reports relative to the current
+                // mediaItem (i.e. the current chapter file). Add the chapter's cumulative offset
+                // so the scrubber, chapter-row progress, and any downstream consumer see a real
+                // book-absolute value. Without this, MultiFile audiobooks resume in the right
+                // chapter (correct `currentItemIndex`) but the in-app scrubber pegs at 0:00 even
+                // though the system notification shows the real progress.
+                val absolutePosition = if (isSingleFile) {
+                    position
+                } else {
+                    (currentChapter?.positionInBookMs ?: 0L) + position
+                }
                 PlaybackUiState.Loaded(
                     book = book,
                     currentChapter = currentChapter,
-                    positionInBookMs = position,
+                    positionInBookMs = absolutePosition,
                     isPlaying = snap.isPlaying,
                     speed = snap.speed,
                     skipSilenceEnabled = book.skipSilenceEnabled,
