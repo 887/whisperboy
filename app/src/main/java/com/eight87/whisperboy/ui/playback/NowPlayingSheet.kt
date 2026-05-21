@@ -212,8 +212,10 @@ fun NowPlayingSheet(
 }
 
 /**
- * Peek height for the mini-player slot. Two-row layout (cover + title /
- * play-pause + 2dp progress line) ~80dp; tonearmboy uses 118dp for its
- * richer transport row but our NowPlayingBar is leaner, so we land smaller.
+ * Peek height for the mini-player slot. Three-row layout — info row (~60dp:
+ * 48dp cover + 6dp vertical padding ×2), transport row (~48dp default
+ * IconButton target), and a 2dp LinearProgressIndicator pinned to the
+ * bottom. At 80dp the third row was being clipped off, hiding the progress
+ * strip. 118dp matches tonearmboy's MiniPlayer for the same row shape.
  */
-private val DEFAULT_PEEK_DP = 80.dp
+private val DEFAULT_PEEK_DP = 118.dp
