@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,9 +20,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eight87.whisperboy.data.library.BookmarkSource
@@ -138,6 +144,71 @@ fun NowPlayingSheet(
     // (see [NowPlayingBar.onSheetDragDelta]).
     val sheetDraggable = rememberDraggableState { delta -> onSheetDragDelta(delta) }
 
+    // Hoisted LazyListState for the inline chapter queue inside PlaybackScreen.
+    // Needed here so the NestedScrollConnection can read whether the list is
+    // at the top before deciding to drain a pull-down into a sheet-collapse.
+    val chapterListState = rememberLazyListState()
+
+    // NestedScrollConnection — Auxio pull-down-to-collapse / pull-up-to-expand.
+    // - Drag-up while sheet is partially open finishes opening before the
+    //   LazyColumn gets a chance to scroll up.
+    // - Drag-down at the TOP of the chapter list drains into a sheet-collapse
+    //   instead of letting the LazyColumn overscroll-bounce eat it.
+    // - On fling release, commit to whichever end-state the drag was trending
+    //   toward (so a small flick over still snaps closed).
+    val nestedDragDirection = remember { mutableStateOf(0) }
+    val sheetNestedScroll = remember(screenHeightPx, peekPx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                if (available.y < 0f && sheetProgress.value < 1f) {
+                    val travel = dragRangePx
+                    val delta = -available.y / travel
+                    nestedDragDirection.value = -1
+                    scope.launch { sheetProgress.snapTo((sheetProgress.value + delta).coerceAtMost(1f)) }
+                    return Offset(0f, available.y)
+                }
+                if (available.y > 0f &&
+                    chapterListState.firstVisibleItemIndex == 0 &&
+                    chapterListState.firstVisibleItemScrollOffset == 0
+                ) {
+                    val travel = dragRangePx
+                    val delta = available.y / travel
+                    nestedDragDirection.value = 1
+                    scope.launch { sheetProgress.snapTo((sheetProgress.value - delta).coerceAtLeast(0f)) }
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                if (available.y > 0f) {
+                    val travel = dragRangePx
+                    val delta = available.y / travel
+                    nestedDragDirection.value = 1
+                    scope.launch { sheetProgress.snapTo((sheetProgress.value - delta).coerceAtLeast(0f)) }
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                val dir = nestedDragDirection.value
+                val target = when {
+                    dir > 0 -> 0f
+                    dir < 0 -> 1f
+                    else -> if (sheetProgress.value >= 0.5f) 1f else 0f
+                }
+                sheetProgress.animateTo(target)
+                nestedDragDirection.value = 0
+                return Velocity.Zero
+            }
+        }
+    }
+
     val sheetBackgroundActive = com.eight87.whisperboy.theme.LocalAlbumArtBackgroundActive.current
     val sheetCoverUri = com.eight87.whisperboy.theme.LocalPlayingCoverUri.current
     val sheetShowCoverWallpaper = sheetBackgroundActive && !sheetCoverUri.isNullOrBlank()
@@ -152,6 +223,7 @@ fun NowPlayingSheet(
                     else Modifier.background(MaterialTheme.colorScheme.surface),
                 )
                 .clipToBounds()
+                .nestedScroll(sheetNestedScroll)
                 .draggable(
                     state = sheetDraggable,
                     orientation = Orientation.Vertical,
@@ -191,12 +263,19 @@ fun NowPlayingSheet(
                             sleepTimerCommands = sleepTimerCommands,
                             onBack = onCollapse,
                             onViewBookmarksClick = onViewBookmarksClick,
+                            chapterListState = chapterListState,
                         )
                     }
                 }
-                // Mini-player (front of stack). ALWAYS composed —
-                // dropping it mid-drag would cancel the gesture.
-                Box(
+                // Mini-player (front of stack). Gated on `progress < 1f` so
+                // when the sheet is fully expanded the invisible peek slot
+                // doesn't sit on top of the PlaybackScreen's TopAppBar
+                // eating taps on the sleep-timer / bookmark / overflow
+                // actions. At progress < 1f no drag-to-collapse is in
+                // flight on the mini-player itself (the nested-scroll
+                // connection or the parent draggable handle that), so
+                // dropping the composition at 1f doesn't cancel a gesture.
+                if (progress < 1f) Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
