@@ -104,15 +104,15 @@ fun NowPlayingBar(
     val bookDurationMs = loaded.book.durationMs.coerceAtLeast(1L)
     val progressFraction = { (loaded.positionInBookMs.toFloat() / bookDurationMs).coerceIn(0f, 1f) }
 
-    // Wrap in Surface (rather than `Modifier.background(surfaceContainerHigh)`)
-    // so `LocalContentColor` propagates to the transport-row IconButtons —
-    // Modifier.background paints a colour but doesn't set the content-color
-    // CompositionLocal, so the icons inherit the OUTER (often near-black
-    // against a tinted dark surface) colour and become invisible. Same
-    // "missing frame" fix tonearmboy got.
+    // Wrap in Surface (rather than `Modifier.background(...)`) so
+    // `LocalContentColor` propagates to the transport-row IconButtons.
+    // Container reads from `surface` (same token TopAppBar uses) so
+    // the bar picks up the theme's glass alpha under cover-wallpaper
+    // mode — the cover bleeds through. `surfaceContainerHigh` stays
+    // opaque exclusively for modal containers (M3 AlertDialog defaults).
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surface,
     ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
