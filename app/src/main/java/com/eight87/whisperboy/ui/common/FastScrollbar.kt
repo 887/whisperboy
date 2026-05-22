@@ -258,15 +258,28 @@ private fun ScrollbarThumb(
                         .padding(end = thumbWidth + 4.dp)
                         .semantics { testTag = "fast_scrollbar_section_$label" },
                 ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Visible,
-                    )
+                    // Pill background — ported from shutterboy's YearPill
+                    // shape so the section floaties read as discrete chips
+                    // sitting on the chrome instead of free-floating text
+                    // that disappears against tinted surfaces.
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(percent = 50))
+                            .background(
+                                MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f),
+                            )
+                            .padding(horizontal = 10.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Visible,
+                        )
+                    }
                 }
             }
         }
