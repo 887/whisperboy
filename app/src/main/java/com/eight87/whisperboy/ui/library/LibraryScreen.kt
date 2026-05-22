@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -686,7 +688,12 @@ private fun LibraryContent(
             LibraryEmptyState(modifier = modifier)
         }
     } else {
-        when (gridMode) {
+        // Search results always render as a list. Two-column grid cuts off
+        // partial covers under the IME and reads worse for partial-match
+        // typing — list rows fit more results in the visible band above
+        // the keyboard and surface title + author together.
+        val effectiveMode = if (searchMode) GridMode.List else gridMode
+        when (effectiveMode) {
             GridMode.Grid -> LibraryCoverGrid(
                 books = sortedBooks,
                 sectionStarts = sectionStarts,
@@ -837,9 +844,17 @@ private fun LibraryCoverList(
     val stableLong: (String) -> Unit = remember { { id -> onLongRef.value(id) } }
 
     Box(modifier = modifier) {
+        val imeBottom = androidx.compose.foundation.layout.WindowInsets.ime
+            .asPaddingValues()
+            .calculateBottomPadding()
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(
+                start = 8.dp,
+                top = 8.dp,
+                end = 8.dp,
+                bottom = 8.dp + imeBottom,
+            ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
