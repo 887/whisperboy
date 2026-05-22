@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.height
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.library.LibraryRescanCoordinator
 import com.eight87.whisperboy.data.library.LibraryScanFilterSettings
@@ -124,6 +125,11 @@ fun SettingsScreen(
             RenderSection(Section.SleepTimer, bindings)
             RenderSection(Section.Library, bindings)
             RenderSection(Section.About, bindings)
+            // Tail breather so the last card doesn't sit flush against
+            // the system nav inset.
+            androidx.compose.foundation.layout.Spacer(
+                modifier = Modifier.height(24.dp),
+            )
         }
     }
 }

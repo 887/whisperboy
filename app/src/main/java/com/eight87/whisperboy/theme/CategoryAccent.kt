@@ -87,15 +87,33 @@ val darkAccents: Map<String, CategoryAccent> = mapOf(
 )
 
 /**
+ * Full palette for hash-based id → accent assignment. Used by
+ * [accentFor] when no named category matches the id; the hash is
+ * stable across runs so a given row keeps its colour without a
+ * hand-mapped table. Mirrors tonearmboy's pattern — every About /
+ * Licenses sub-row gets a distinct hue instead of all collapsing
+ * to the same fallback.
+ */
+private val AccentPalette: List<CategoryAccent> = listOf(
+  PlaybackAccent,
+  SleepTimerAccent,
+  LibraryAccent,
+  ThemeAccent,
+  AboutAccent,
+  LicensesAccent,
+)
+
+/**
  * Pick an accent for the row identified by [id]. Top-level / not
- * `@Composable` so non-Compose callers (and tests) can use it. Per
- * gotcha #3 in `docs/plans/m3-expressive.md`, every row-id-bearing
- * surface should resolve its accent through this function so a
- * hand-rolled screen (About, Licenses, future custom surfaces) gets
- * the same colouring as the catalog-driven Settings rows.
+ * `@Composable` so non-Compose callers (and tests) can use it.
  *
- * Unknown ids fall back to [PlaybackAccent] so a typo / future-added
- * row still renders something rather than going monochrome.
+ * Named category ids (`playback`, `sleep`, …) get their canonical
+ * accent. Everything else hashes into the palette so each sub-row
+ * (`about.app_name`, `about.github`, `about.license`, …) gets its
+ * own colour deterministically — the user noticed all About sub-row
+ * icons coming back the same hue because the previous `else` branch
+ * fell through to [PlaybackAccent]. Tonearmboy's pattern: hash
+ * `id.hashCode() % palette.size` with the negative-hash guard.
  */
 fun accentFor(id: String): CategoryAccent = when (id) {
   "playback" -> PlaybackAccent
@@ -104,5 +122,9 @@ fun accentFor(id: String): CategoryAccent = when (id) {
   "theme" -> ThemeAccent
   "about" -> AboutAccent
   "licenses" -> LicensesAccent
-  else -> PlaybackAccent
+  else -> {
+    val n = AccentPalette.size
+    val idx = ((id.hashCode() % n) + n) % n
+    AccentPalette[idx]
+  }
 }
