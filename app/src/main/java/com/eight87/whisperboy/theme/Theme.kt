@@ -180,12 +180,21 @@ fun WhisperboyTheme(
   val coverPath = (nowPlayingState.state.value as? com.eight87.whisperboy.playback.PlaybackUiState.Loaded)?.book?.coverPath
   val backgroundActive = tintByAlbumArt && albumArtBackgroundEnabled && !coverPath.isNullOrBlank()
   val colorScheme = if (!backgroundActive) tintedScheme else {
-    val chromeAlpha = 0.5f
+    // Cover-wallpaper mode. `background` (the Scaffold container) goes transparent
+    // so the void band between widgets reveals the blurred cover. `surface` (the
+    // TopAppBar tier) gets the 50% chrome alpha so the cover bleeds through it.
+    //
+    // `surfaceContainerHigh` / `surfaceContainerHighest` stay OPAQUE on purpose:
+    // M3 AlertDialog / `Picker` dialogs / SettingPicker AlertDialogs all default
+    // to surfaceContainerHigh as their container. Alpha-multiplying that token
+    // made every modal in the app see-through (user report — SettingPicker for
+    // theme over the settings list). The NowPlayingBar peek slot uses
+    // surfaceContainerHigh too; it now stays opaque under cover-wallpaper mode,
+    // which is the correct behaviour (the cover-wallpaper paints behind the
+    // sheet, not behind the mini-player strip).
     tintedScheme.copy(
       background = Color.Transparent,
-      surface = tintedScheme.surface.copy(alpha = chromeAlpha),
-      surfaceContainerHigh = tintedScheme.surfaceContainerHigh.copy(alpha = chromeAlpha),
-      surfaceContainerHighest = tintedScheme.surfaceContainerHighest.copy(alpha = chromeAlpha),
+      surface = tintedScheme.surface.copy(alpha = 0.5f),
     )
   }
 
