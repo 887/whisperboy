@@ -35,7 +35,15 @@ import kotlinx.coroutines.launch
             bookId = route.bookId,
             bookmarkSource = graph.bookmarkSource,
             chapterSource = graph.chapterSource,
-            onBack = { backStack.removeLastOrNull() },
+            // The only entry point into BookmarkRoute is the view-bookmarks button on
+            // the expanded player, which collapses the sheet on push so the destination
+            // is visible. On back, re-expand the sheet so the user lands back inside
+            // the player they came from (the alternative is dropping them on the
+            // library, which is the bug being fixed here).
+            onBack = {
+                backStack.removeLastOrNull()
+                scope.openSheet()
+            },
             onBookmarkSeek = { positionInBookMs ->
                 coroutineScope.launch {
                     graph.transportCommands.seekTo(positionInBookMs)

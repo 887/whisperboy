@@ -100,7 +100,14 @@ fun WhisperboyApp() {
         Box(modifier = Modifier.fillMaxSize().padding(bottom = navDisplayBottomPad)) {
             NavDisplay(
                 backStack = backStack,
-                onBack = { backStack.removeLastOrNull() },
+                onBack = {
+                    // If we're popping out of a BookmarkRoute, the user reached it
+                    // from the expanded player (the only entry point); re-open the
+                    // sheet so back returns to the player instead of the library.
+                    val top = backStack.lastOrNull()
+                    backStack.removeLastOrNull()
+                    if (top is BookmarkRoute) openSheet()
+                },
                 entryProvider = entryProvider { registerAllDestinations(routeScope) },
             )
         }
