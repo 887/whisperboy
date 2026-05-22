@@ -368,16 +368,9 @@ object SettingsCatalog {
             subtitleRes = R.string.settings_catalog_about_subtitle,
             accent = AboutAccent,
         ),
-        SettingsCatalogEntry(
-            id = ID_LICENSES,
-            section = Section.About,
-            icon = Icons.Filled.Description,
-            label = "Open-source licenses",
-            subtitleEn = "Third-party libraries and their licenses",
-            labelRes = R.string.settings_catalog_licenses_label,
-            subtitleRes = R.string.settings_catalog_licenses_subtitle,
-            accent = LicensesAccent,
-        ),
+        // Open-source licenses now lives inside the About sub-page (Source card).
+        // Keeping a duplicate row here was a discoverability anti-pattern — one
+        // canonical entry point per surface.
     )
 
     /** Look up by id; throws if missing — IDs are compile-time stable. */

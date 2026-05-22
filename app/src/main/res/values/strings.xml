@@ -362,16 +362,34 @@
     <string name="settings_sleep_window_clear">Disable window</string>
     <string name="settings_sleep_window_disabled">Off</string>
 
-    <!-- about_ — About sub-page (Phase K.6) -->
+    <!-- about_ — About sub-page (Phase K.6, port of tonearmboy D.16.4 layout). -->
     <string name="about_title">About</string>
     <string name="about_version_format">Version %1$s (%2$s)</string>
+    <string name="about_card_build">Build</string>
+    <string name="about_card_source">Source</string>
+    <string name="about_card_credits">Credits</string>
+    <string name="about_application_label">Application</string>
+    <string name="about_application_subtitle">whisperboy — modern Android audiobook player</string>
+    <string name="about_version_label">Version</string>
+    <string name="about_version_subtitle">whisperboy %1$s (%2$s)</string>
+    <string name="about_build_date_label">Build date</string>
+    <string name="about_build_date_subtitle">Built %1$s (UTC)</string>
+    <string name="about_github_label">GitHub repository</string>
+    <string name="about_github_subtitle">github.com/887/whisperboy</string>
     <string name="about_license">License</string>
-    <string name="about_license_subtitle">Licensed under MIT</string>
-    <string name="about_sibling_title">Spiritual sibling</string>
-    <string name="about_sibling_body">Whisperboy is not a fork. Voice (GPLv3, by Paul Woitaschek) is the closest functional analog — same SAF-only library shape, four folder modes, sleep timer with fade-out, MediaLibraryService for Android Auto. Whisperboy is written from scratch in Kotlin + Compose under MIT; we don\'t copy code.</string>
-    <string name="about_github_label">GitHub</string>
+    <string name="about_license_subtitle">MIT — see LICENSE. Direct deps (AndroidX, Media3, Kotlin, Coil, Room, Robolectric) are Apache-2.0 / MIT — no GPL contamination.</string>
     <string name="about_oss_licenses_label">Open-source licenses</string>
-    <string name="about_oss_licenses_subtitle">Components shipped in this build</string>
+    <string name="about_oss_licenses_subtitle">Every dependency that ships in the APK, with its license.</string>
+    <string name="about_credits_cleanroom_label">Clean-room implementation</string>
+    <string name="about_credits_cleanroom_subtitle">Inspiration drawn from UX screenshots only. No code copied from the projects below. Reinforced by entirely different tech stacks. MIT-licensed throughout.</string>
+    <string name="about_credits_voice_label">Voice (GPLv3)</string>
+    <string name="about_credits_voice_subtitle">Visual + UX reference for SAF folder modes, sleep timer with fade-out, and chapter UI. Different stack: Kotlin + Android Views, multi-module Metro DI. github.com/PaulWoitaschek/Voice</string>
+    <string name="about_credits_media3_label">Media3 + Compose + Room</string>
+    <string name="about_credits_media3_subtitle">AndroidX libraries: ExoPlayer/MediaLibraryService, Jetpack Compose, Room.</string>
+    <!-- Easter egg — multi-tap the version row. -->
+    <string name="about_easter_egg_first">Click 2 more times for a treat</string>
+    <string name="about_easter_egg_second">1 more time</string>
+    <string name="about_easter_egg_lion_cd">A good lion sighting</string>
 
     <!-- licenses_ — Open-source licenses sub-page (oss-licenses Phase B). -->
     <string name="licenses_title">Open-source licenses</string>

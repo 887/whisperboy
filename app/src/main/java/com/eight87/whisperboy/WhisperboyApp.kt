@@ -75,9 +75,11 @@ fun WhisperboyApp() {
 
     // When the mini-player peek is visible, pad the NavDisplay's bottom by the peek
     // height so library chrome (FAB, lists) doesn't sit underneath the peek bar.
+    // Must match `NowPlayingSheet.DEFAULT_PEEK_DP` (118.dp) — otherwise the bottom
+    // rows of any scroll surface get clipped by the peek slot.
     val playbackState by graph.nowPlayingState.state.collectAsStateWithLifecycle()
     val showMiniPlayer = playbackState is PlaybackUiState.Loaded
-    val navDisplayBottomPad = if (showMiniPlayer) 80.dp else 0.dp
+    val navDisplayBottomPad = if (showMiniPlayer) 118.dp else 0.dp
 
     // Replace the entire back stack with HomeRoute. Used by the onboarding
     // first-scan "Continue" button so back from Home doesn't re-enter the

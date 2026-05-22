@@ -1,3 +1,7 @@
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
@@ -16,6 +20,21 @@ plugins {
   alias(libs.plugins.licensee)
 }
 
+// Mirror of tonearmboy's About-screen build-metadata capture. `git rev-parse`
+// runs at configuration time so the result is baked into BuildConfig; the date
+// is captured at the same time. Both fall back to sentinels when run from a
+// tarball without git history.
+val gitShortSha: String = runCatching {
+  val proc = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+    .redirectErrorStream(true)
+    .start()
+  proc.waitFor()
+  proc.inputStream.bufferedReader().readText().trim().ifEmpty { "unknown" }
+}.getOrDefault("unknown")
+
+val buildDateUtc: String = DateTimeFormatter.ISO_LOCAL_DATE
+  .format(LocalDate.now(ZoneOffset.UTC))
+
 android {
     namespace = "com.eight87.whisperboy"
     compileSdk = 36
@@ -28,6 +47,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "GIT_SHA", "\"$gitShortSha\"")
+        buildConfigField("String", "BUILD_DATE", "\"$buildDateUtc\"")
     }
 
     buildTypes {
@@ -43,7 +64,7 @@ android {
     buildFeatures {
       compose = true
       aidl = false
-      buildConfig = false
+      buildConfig = true
       shaders = false
     }
 

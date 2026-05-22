@@ -1,28 +1,22 @@
 package com.eight87.whisperboy.ui.settings
 
 import android.content.Context
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,18 +30,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.eight87.whisperboy.R
+import com.eight87.whisperboy.ui.settings.catalog.SettingsCard
+import com.eight87.whisperboy.ui.settings.catalog.SettingsDimens
+import com.eight87.whisperboy.ui.settings.catalog.SettingsRow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -177,15 +170,27 @@ fun LicensesScreen(
         .padding(innerPadding)
         .semantics { testTag = "licenses_screen" },
       contentPadding = PaddingValues(
-        start = 16.dp,
-        end = 16.dp,
+        start = SettingsDimens.PagePadding,
+        end = SettingsDimens.PagePadding,
         top = 12.dp,
         bottom = 24.dp,
       ),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
+      verticalArrangement = Arrangement.spacedBy(SettingsDimens.CardSpacing),
     ) {
+      // Per-artifact M3E SettingsCard with a single SettingsRow inside. Same shape as
+      // tonearmboy's LicensesScreen and consistent with the rest of whisperboy's
+      // Settings chrome. The card title holds the artifact name + version (the
+      // important identity), the row hosts the groupId + SPDX as label/subtitle.
       items(entries, key = { "${it.groupId}:${it.artifactId}" }) { entry ->
-        LicenseCard(entry = entry, onClick = { expanded = entry })
+        SettingsCard(title = "${entry.artifactId} ${entry.version}") {
+          SettingsRow(
+            id = "license.${entry.groupId}.${entry.artifactId}",
+            icon = Icons.Outlined.Article,
+            label = entry.groupId,
+            subtitle = entry.spdxId ?: stringResource(R.string.licenses_unknown_spdx),
+            onClick = { expanded = entry },
+          )
+        }
       }
     }
   }
@@ -226,56 +231,3 @@ fun LicensesScreen(
   }
 }
 
-@Composable
-private fun LicenseCard(entry: LicenseEntry, onClick: () -> Unit) {
-  Card(
-    modifier = Modifier.fillMaxWidth(),
-    colors = CardDefaults.cardColors(
-      containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-    ),
-    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-  ) {
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable(onClick = onClick)
-        .padding(horizontal = 16.dp, vertical = 12.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Column(modifier = Modifier.weight(1f)) {
-        Text(
-          text = "${entry.artifactId} ${entry.version}",
-          style = MaterialTheme.typography.bodyLarge,
-          fontWeight = FontWeight.Medium,
-          color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-          text = entry.groupId,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      SpdxBadge(spdxId = entry.spdxId)
-    }
-  }
-}
-
-@Composable
-private fun SpdxBadge(spdxId: String?) {
-  val label = spdxId ?: stringResource(R.string.licenses_unknown_spdx)
-  val badgeCd = stringResource(R.string.licenses_spdx_badge_cd, label)
-  Box(
-    modifier = Modifier
-      .clip(RoundedCornerShape(50))
-      .background(MaterialTheme.colorScheme.secondaryContainer)
-      .padding(horizontal = 10.dp, vertical = 4.dp)
-      .semantics { contentDescription = badgeCd },
-  ) {
-    Text(
-      text = label,
-      style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSecondaryContainer,
-    )
-  }
-}
