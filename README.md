@@ -265,7 +265,7 @@ Translations are produced by the user + Claude per-language; English (`app/src/m
 
 | Language | Coverage | Status |
 | --- | --- | --- |
-| [German](app/src/main/res/values-de/strings.xml) | 328/328 (100%) | complete |
+| [German](app/src/main/res/values-de/strings.xml) | 326/345 (94%) | in progress |
 
 <!-- TRANSLATIONS-END -->
 
