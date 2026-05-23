@@ -33,7 +33,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.AlertDialog
@@ -462,7 +462,7 @@ private fun SleepTimerButton(
     IconButton(onClick = onClick) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
-                imageVector = Icons.Filled.Timer,
+                imageVector = Icons.Outlined.DarkMode,
                 contentDescription = cd,
             )
             val badge = when (sleepState) {
