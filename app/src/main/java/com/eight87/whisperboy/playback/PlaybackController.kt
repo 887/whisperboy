@@ -219,6 +219,17 @@ internal class PlaybackController(
     @Volatile private var pausedAtEpochMs: Long? = null
 
     /**
+     * Set true while a programmatic seek (chapter-row tap, scrubber release) is in flight, until
+     * Media3 confirms it via [Player.Listener.onMediaItemTransition] or
+     * [Player.Listener.onPositionDiscontinuity]. While set, the 250ms ticker skips writing
+     * [positionMs] from `c.currentPosition` — that read briefly returns the *pre-seek* value,
+     * and combined with eagerly-updated [playerSnapshot] / [positionMs] it produces a one-frame
+     * blip where the scrubber clamps to 100% (or the wrong chapter, in single-file mode) before
+     * settling to the correct spot.
+     */
+    @Volatile private var pendingSeek: Boolean = false
+
+    /**
      * Phase R — [MediaController.Listener] that flips [connected] back to false and triggers
      * a rebind when the underlying binder dies (service killed for OOM / force-stop / low-mem).
      * Without this, [controller] would stay non-null pointing at a dead binder, every
@@ -263,6 +274,8 @@ internal class PlaybackController(
             }
             // A media-item transition is an event-driven projection tick (R.C.5).
             controller?.let { c -> positionMs.value = c.currentPosition }
+            // Seek confirmed by Media3 — re-enable the ticker.
+            pendingSeek = false
             // Phase P.7 — save the resume point at the chapter boundary. The new chapter index
             // is already on the snapshot above; position is whatever the controller reports
             // just after the transition (typically ~0 for a natural chapter-end transition,
@@ -277,6 +290,19 @@ internal class PlaybackController(
 
         override fun onPlaybackParametersChanged(p: androidx.media3.common.PlaybackParameters) {
             playerSnapshot.update { it.copy(speed = p.speed) }
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: androidx.media3.common.Player.PositionInfo,
+            newPosition: androidx.media3.common.Player.PositionInfo,
+            reason: Int,
+        ) {
+            // A seek (or auto-transition) has actually landed in the engine — the controller's
+            // `currentPosition` now reflects the post-seek value. Re-enable the ticker and
+            // sync once so the UI reads the confirmed position. Covers the single-file case
+            // where seek doesn't cross a media-item boundary (no [onMediaItemTransition]).
+            pendingSeek = false
+            controller?.let { c -> positionMs.value = c.currentPosition }
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
@@ -560,7 +586,14 @@ internal class PlaybackController(
             while (true) {
                 val live = controller ?: return@launch
                 if (!live.isPlaying) return@launch
-                positionMs.value = live.currentPosition
+                // Skip while a programmatic seek is in flight — the controller still reports
+                // the pre-seek `currentPosition` for ~1 frame after `seekTo`, which combined
+                // with eagerly-updated [playerSnapshot] flashes the scrubber to 100% (or the
+                // wrong chapter) before the seek confirmation arrives via [onMediaItemTransition]
+                // / [onPositionDiscontinuity].
+                if (!pendingSeek) {
+                    positionMs.value = live.currentPosition
+                }
                 delay(TICKER_INTERVAL_MS)
             }
         }
@@ -627,6 +660,7 @@ internal class PlaybackController(
         // Phase F.1 ships chapter-scoped scrubber semantics: callers pass a book-absolute
         // position. We translate to (mediaItemIndex, positionInChapterMs) using the controller's
         // own media-item duration; sleep-timer / chapter-list seeking will use the same path.
+        pendingSeek = true
         val chapterCount = c.mediaItemCount
         if (chapterCount == 0) {
             c.seekTo(positionInBookMs.coerceAtLeast(0L))
@@ -662,11 +696,13 @@ internal class PlaybackController(
             is ChapterTapAction.BootBookFromPosition ->
                 playBookFromPosition(decision.bookId, decision.positionInBookMs)
             is ChapterTapAction.SeekSingleFile -> onMain { c ->
+                pendingSeek = true
                 c.seekTo(0, decision.positionInBookMs)
                 positionMs.value = decision.positionInBookMs
                 if (!c.isPlaying) c.play()
             }
             is ChapterTapAction.SeekMultiFile -> onMain { c ->
+                pendingSeek = true
                 c.seekTo(decision.index, 0L)
                 positionMs.value = 0L
                 // Read mediaId via `getMediaItemAt(index)` rather than
@@ -685,11 +721,13 @@ internal class PlaybackController(
     }
 
     override suspend fun rewind() = onMain { c ->
+        pendingSeek = true
         val target = (c.currentPosition - rewindMs).coerceAtLeast(0L)
         c.seekTo(target)
     }
 
     override suspend fun forward() = onMain { c ->
+        pendingSeek = true
         val target = c.currentPosition + forwardMs
         c.seekTo(target)
     }
@@ -814,7 +852,31 @@ internal class PlaybackController(
         startMs: Long,
         startIndex: Int,
     ) = onMain { c ->
+        // Persist the OUTGOING book's position BEFORE flipping [targetedBookId]. Otherwise the
+        // 1Hz sample-save collector and the imminent `onIsPlayingChanged(false)` (triggered by
+        // `setMediaItems` clearing the queue) both write the new controller state under the new
+        // book id, and the previous book's resume point is lost. The controller still holds the
+        // outgoing book's items here, so `currentMediaItemIndex` / `currentPosition` are correct
+        // for the outgoing book.
+        val outgoingBookId = targetedBookId.value
+        if (outgoingBookId != null && outgoingBookId != book.bookId && c.mediaItemCount > 0) {
+            val outgoingChapterIndex = c.currentMediaItemIndex
+            val outgoingPositionMs = c.currentPosition.coerceAtLeast(0L)
+            val outgoingTimestamp = System.currentTimeMillis()
+            applicationScope.launch {
+                bookSource.updatePosition(
+                    outgoingBookId,
+                    outgoingChapterIndex,
+                    outgoingPositionMs,
+                    outgoingTimestamp,
+                )
+            }
+        }
         targetedBookId.value = book.bookId
+        // `setMediaItems` will fire [onMediaItemTransition] for the new book — guard the ticker
+        // until that confirmation lands so the scrubber doesn't briefly project the new chapter
+        // against the outgoing controller's stale `currentPosition`.
+        pendingSeek = true
         android.util.Log.d(
             "whisperboy.playback",
             "startPlayback book=${book.bookId} chapters=${chapters.size} firstUri=${chapters.firstOrNull()?.fileUri} startIdx=$startIndex startMs=$startMs",
