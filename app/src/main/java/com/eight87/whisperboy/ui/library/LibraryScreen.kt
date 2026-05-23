@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -144,6 +145,11 @@ fun LibraryScreen(
     val booksOrNull by bookSource.observeBooks()
         .collectAsStateWithLifecycle(initialValue = null)
     val books: List<BookEntity> = booksOrNull ?: emptyList()
+    val bookProgressList by bookSource.observeBookProgress()
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val progressByBookId: Map<String, Long> = remember(bookProgressList) {
+        bookProgressList.associate { it.bookId to it.positionInBookMs }
+    }
     val roots by persistedUriPermissionStore.observeRoots()
         .collectAsStateWithLifecycle(initialValue = emptyList<LibraryRoot>())
     // Phase P.4 — observe library health; render an error banner above the rail+content row
@@ -346,6 +352,7 @@ fun LibraryScreen(
                     if (booksOrNull != null) {
                         LibraryContent(
                             sortedBooks = sortedBooks,
+                            progressByBookId = progressByBookId,
                             sectionStarts = sectionStarts,
                             gridMode = gridMode,
                             searchMode = searchMode,
@@ -362,6 +369,7 @@ fun LibraryScreen(
                 if (booksOrNull != null) {
                     LibraryContent(
                         sortedBooks = sortedBooks,
+                        progressByBookId = progressByBookId,
                         sectionStarts = sectionStarts,
                         gridMode = gridMode,
                         searchMode = searchMode,
@@ -673,6 +681,7 @@ private fun LibrarySearchNoResults(
 @Composable
 private fun LibraryContent(
     sortedBooks: List<BookEntity>,
+    progressByBookId: Map<String, Long>,
     sectionStarts: List<Pair<Int, String>>,
     gridMode: GridMode,
     searchMode: Boolean,
@@ -696,6 +705,7 @@ private fun LibraryContent(
         when (effectiveMode) {
             GridMode.Grid -> LibraryCoverGrid(
                 books = sortedBooks,
+                progressByBookId = progressByBookId,
                 sectionStarts = sectionStarts,
                 onBookTap = onBookTap,
                 onBookLongPress = onBookLongPress,
@@ -703,6 +713,7 @@ private fun LibraryContent(
             )
             GridMode.List -> LibraryCoverList(
                 books = sortedBooks,
+                progressByBookId = progressByBookId,
                 sectionStarts = sectionStarts,
                 onBookTap = onBookTap,
                 onBookLongPress = onBookLongPress,
@@ -752,6 +763,7 @@ internal fun LibraryEmptyState(modifier: Modifier = Modifier) {
 @Composable
 private fun LibraryCoverGrid(
     books: List<BookEntity>,
+    progressByBookId: Map<String, Long>,
     sectionStarts: List<Pair<Int, String>>,
     onBookTap: (String) -> Unit,
     onBookLongPress: (String) -> Unit,
@@ -792,6 +804,7 @@ private fun LibraryCoverGrid(
                 ) {
                     BookGridTile(
                         book = book,
+                        positionInBookMs = progressByBookId[book.bookId] ?: 0L,
                         onTap = stableTap,
                         onLongPress = stableLong,
                     )
@@ -830,6 +843,7 @@ private fun SectionHeader(label: String) {
 @Composable
 private fun LibraryCoverList(
     books: List<BookEntity>,
+    progressByBookId: Map<String, Long>,
     sectionStarts: List<Pair<Int, String>>,
     onBookTap: (String) -> Unit,
     onBookLongPress: (String) -> Unit,
@@ -868,6 +882,7 @@ private fun LibraryCoverList(
                 item(key = "book:${book.bookId}", contentType = "book") {
                     BookListRow(
                         book = book,
+                        positionInBookMs = progressByBookId[book.bookId] ?: 0L,
                         onTap = stableTap,
                         onLongPress = stableLong,
                     )
@@ -887,9 +902,11 @@ private fun LibraryCoverList(
 @Composable
 internal fun BookGridTile(
     book: BookEntity,
+    positionInBookMs: Long,
     onTap: (String) -> Unit,
     onLongPress: (String) -> Unit,
 ) {
+    val fraction = progressFraction(positionInBookMs, book.durationMs)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -898,12 +915,24 @@ internal fun BookGridTile(
                 onLongClick = { onLongPress(book.bookId) },
             ),
     ) {
-        CoverArt(
-            coverPath = book.coverPath,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f),
-        )
+        ) {
+            CoverArt(
+                coverPath = book.coverPath,
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (fraction > 0f) {
+                CoverProgressOverlay(
+                    fraction = fraction,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                )
+            }
+        }
         Spacer(Modifier.height(8.dp))
         Text(
             text = book.title,
@@ -919,6 +948,10 @@ internal fun BookGridTile(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        BookProgressLine(
+            positionInBookMs = positionInBookMs,
+            durationMs = book.durationMs,
+        )
     }
 }
 
@@ -926,9 +959,11 @@ internal fun BookGridTile(
 @Composable
 private fun BookListRow(
     book: BookEntity,
+    positionInBookMs: Long,
     onTap: (String) -> Unit,
     onLongPress: (String) -> Unit,
 ) {
+    val fraction = progressFraction(positionInBookMs, book.durationMs)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -941,10 +976,20 @@ private fun BookListRow(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverArt(
-            coverPath = book.coverPath,
-            modifier = Modifier.size(64.dp),
-        )
+        Box(modifier = Modifier.size(64.dp)) {
+            CoverArt(
+                coverPath = book.coverPath,
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (fraction > 0f) {
+                CoverProgressOverlay(
+                    fraction = fraction,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                )
+            }
+        }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -961,8 +1006,69 @@ private fun BookListRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            BookProgressLine(
+                positionInBookMs = positionInBookMs,
+                durationMs = book.durationMs,
+            )
         }
     }
+}
+
+private fun progressFraction(positionMs: Long, durationMs: Long): Float {
+    if (durationMs <= 0L || positionMs <= 0L) return 0f
+    return (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+}
+
+@Composable
+private fun CoverProgressOverlay(
+    fraction: Float,
+    modifier: Modifier = Modifier,
+) {
+    // Slim progress bar pinned to the cover's bottom edge — track sits on
+    // `surfaceContainer` at low alpha so the cover bleeds through; the filled
+    // portion uses primary so it reads as "this much is done" against any art.
+    Box(
+        modifier = modifier
+            .height(4.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction)
+                .background(MaterialTheme.colorScheme.primary),
+        )
+    }
+}
+
+@Composable
+private fun BookProgressLine(
+    positionInBookMs: Long,
+    durationMs: Long,
+) {
+    if (durationMs <= 0L) return
+    val fraction = progressFraction(positionInBookMs, durationMs)
+    val remainingMs = (durationMs - positionInBookMs).coerceAtLeast(0L)
+    val percent = (fraction * 100f).toInt().coerceIn(0, 100)
+    val label = if (positionInBookMs <= 0L) {
+        formatRemainingDuration(remainingMs)
+    } else {
+        "${formatRemainingDuration(remainingMs)} • $percent%"
+    }
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+private fun formatRemainingDuration(ms: Long): String {
+    val totalSeconds = ms / 1000L
+    val hours = totalSeconds / 3600L
+    val minutes = (totalSeconds % 3600L) / 60L
+    return if (hours > 0L) "${hours}h ${minutes}m left" else "${minutes}m left"
 }
 
 private fun sortKeyLabel(key: BookSortKey): Int = when (key) {

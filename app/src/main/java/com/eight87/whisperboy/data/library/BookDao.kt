@@ -11,6 +11,25 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE active = 1 ORDER BY title COLLATE NOCASE")
     fun observeActive(): Flow<List<BookEntity>>
 
+    /**
+     * Per-book absolute resume position for the library cover grid / list. The LEFT JOIN
+     * picks the chapter row at the saved `currentChapterIndex`; `COALESCE(...,0)` covers
+     * the (rare) case where a book has no chapter at that index (e.g. an unenriched row
+     * scanned before chapters landed) — the projection then degrades to just
+     * `position_in_chapter_ms`, which is 0 for un-started books.
+     */
+    @Query(
+        """
+        SELECT b.bookId AS bookId,
+               COALESCE(c.position_in_book_ms, 0) + b.position_in_chapter_ms AS positionInBookMs
+          FROM books b
+          LEFT JOIN chapters c
+            ON c.bookId = b.bookId AND c.chapterIndex = b.currentChapterIndex
+         WHERE b.active = 1
+        """
+    )
+    fun observeActiveBookProgress(): Flow<List<BookProgress>>
+
     @Query("SELECT * FROM books WHERE bookId = :id LIMIT 1")
     fun observeById(id: String): Flow<BookEntity?>
 

@@ -16,6 +16,14 @@ interface BookSource {
 
     fun observeBooks(): Flow<List<BookEntity>>
 
+    /**
+     * Stream of book-absolute resume positions per active book. The library cover grid /
+     * list use this to render the per-tile progress affordance (progress bar overlay on
+     * the cover + remaining time / percentage line). Joined against the chapters table at
+     * the DB tier so the UI doesn't have to load every book's full chapter list.
+     */
+    fun observeBookProgress(): Flow<List<BookProgress>>
+
     fun observeBook(id: String): Flow<BookEntity?>
 
     /**

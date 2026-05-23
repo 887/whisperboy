@@ -45,7 +45,7 @@ class BookGridTileTest {
     @Test
     fun `renders title and author`() {
         composeRule.setContent {
-            BookGridTile(book = book, onTap = {}, onLongPress = {})
+            BookGridTile(book = book, positionInBookMs = 0L, onTap = {}, onLongPress = {})
         }
         composeRule.onNodeWithText("The Hobbit").assertExists()
         composeRule.onNodeWithText("J.R.R. Tolkien").assertExists()
@@ -56,6 +56,7 @@ class BookGridTileTest {
         composeRule.setContent {
             BookGridTile(
                 book = book.copy(author = null),
+                positionInBookMs = 0L,
                 onTap = {},
                 onLongPress = {},
             )
@@ -67,7 +68,7 @@ class BookGridTileTest {
     fun `composes without crash when cover path is null`() {
         // Smoke: the cover branch is the placeholder; no exception thrown.
         composeRule.setContent {
-            BookGridTile(book = book, onTap = {}, onLongPress = {})
+            BookGridTile(book = book, positionInBookMs = 0L, onTap = {}, onLongPress = {})
         }
         composeRule.onNodeWithText("The Hobbit").assertExists()
     }
@@ -76,7 +77,7 @@ class BookGridTileTest {
     fun `tap on the tile fires onTap`() {
         var taps = 0
         composeRule.setContent {
-            BookGridTile(book = book, onTap = { taps++ }, onLongPress = {})
+            BookGridTile(book = book, positionInBookMs = 0L, onTap = { taps++ }, onLongPress = {})
         }
         composeRule.onNodeWithText("The Hobbit").performClick()
         assertEquals(1, taps)
@@ -86,7 +87,7 @@ class BookGridTileTest {
     fun `long-press on the tile fires onLongPress`() {
         var longs = 0
         composeRule.setContent {
-            BookGridTile(book = book, onTap = {}, onLongPress = { longs++ })
+            BookGridTile(book = book, positionInBookMs = 0L, onTap = {}, onLongPress = { longs++ })
         }
         composeRule.onNodeWithText("The Hobbit").performTouchInput { longClick() }
         composeRule.waitForIdle()

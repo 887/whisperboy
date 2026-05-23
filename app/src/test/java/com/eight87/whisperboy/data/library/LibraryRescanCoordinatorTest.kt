@@ -412,6 +412,7 @@ private object NoopMediaAnalyzer : MediaAnalyzer {
 private class FakeBookSource : BookSource {
     val booksState = MutableStateFlow<List<BookEntity>>(emptyList())
     override fun observeBooks() = booksState
+    override fun observeBookProgress() = MutableStateFlow<List<com.eight87.whisperboy.data.library.BookProgress>>(emptyList())
     override fun observeBook(id: String) = MutableStateFlow<BookEntity?>(booksState.value.firstOrNull { it.bookId == id })
     override fun observeBooksByAuthor(authorName: String) =
         MutableStateFlow<List<BookEntity>>(booksState.value.filter { it.author.equals(authorName, ignoreCase = true) })

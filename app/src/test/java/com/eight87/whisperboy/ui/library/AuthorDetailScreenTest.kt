@@ -46,6 +46,7 @@ class AuthorDetailScreenTest {
 
     private fun fakeSource(flow: Flow<List<BookEntity>>): BookSource = object : BookSource {
         override fun observeBooks(): Flow<List<BookEntity>> = emptyFlow()
+        override fun observeBookProgress(): Flow<List<com.eight87.whisperboy.data.library.BookProgress>> = emptyFlow()
         override fun observeBook(id: String): Flow<BookEntity?> = emptyFlow()
         override fun observeBooksByAuthor(authorName: String): Flow<List<BookEntity>> = flow
         override suspend fun search(query: String): List<BookEntity> = emptyList()

@@ -29,6 +29,8 @@ internal class LibraryRepository(
 
     override fun observeBooks(): Flow<List<BookEntity>> = bookDao.observeActive()
 
+    override fun observeBookProgress(): Flow<List<BookProgress>> = bookDao.observeActiveBookProgress()
+
     override fun observeBook(id: String): Flow<BookEntity?> = bookDao.observeById(id)
 
     override fun observeBooksByAuthor(authorName: String): Flow<List<BookEntity>> =
