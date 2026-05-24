@@ -224,8 +224,12 @@ fun LibraryScreen(
     // `pickFolder` idiom above); `pendingCustomCoverBookId` stashes the target book id from
     // the moment the user taps the action-sheet button until the picker returns.
     var pendingCustomCoverBookId by remember { mutableStateOf<String?>(null) }
+    // GetContent (ACTION_GET_CONTENT image/*) instead of OpenDocument: the SAF picker
+    // only surfaces DocumentsProviders, so third-party gallery apps (Aves, Photos, Ente,
+    // etc.) never appeared as cover sources. ACTION_GET_CONTENT triggers the
+    // "Complete action using" picker that includes every installed gallery / camera app.
     val pickCustomCover = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
+        contract = ActivityResultContracts.GetContent(),
     ) { uri ->
         val bookId = pendingCustomCoverBookId
         pendingCustomCoverBookId = null
@@ -445,7 +449,7 @@ fun LibraryScreen(
                 },
                 onPickCustomCover = {
                     pendingCustomCoverBookId = actionBook.bookId
-                    pickCustomCover.launch(arrayOf("image/*"))
+                    pickCustomCover.launch("image/*")
                     actionSheetBookId = null
                 },
                 onForget = {
