@@ -62,7 +62,7 @@ import kotlinx.coroutines.launch
  * Layout (3-row Column, mirroring tonearmboy's MiniPlayer shape, audiobook-flavoured):
  *
  *   Row 1 (info):     [cover 48dp] [title/chapter, weight=1]
- *   Row 2 (transport): [Replay] [SkipPrev] [Play/Pause] [SkipNext] [Forward]    (SpaceEvenly, 40dp targets, 24dp icons; Play/Pause 28dp)
+ *   Row 2 (transport): [SkipPrev] [Rewind] [Play/Pause] [Forward] [SkipNext]    (SpaceEvenly, 40dp targets, 24dp icons; Play/Pause 28dp)
  *   Row 3 (progress): [position mm:ss] .... 2dp progress line .... [chapter-duration mm:ss]
  *
  * The 2dp progress line tracks `position / duration` across the whole book and
@@ -172,17 +172,17 @@ fun NowPlayingBar(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = { scope.launch { transport.rewind() } }) {
-                Icon(
-                    imageVector = Icons.Filled.FastRewind,
-                    contentDescription = stringResource(R.string.player_rewind_cd, rewindSeconds),
-                    modifier = Modifier.size(24.dp),
-                )
-            }
             IconButton(onClick = { scope.launch { transport.prevChapter() } }) {
                 Icon(
                     imageVector = Icons.Filled.SkipPrevious,
                     contentDescription = stringResource(R.string.player_skip_prev_cd),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            IconButton(onClick = { scope.launch { transport.rewind() } }) {
+                Icon(
+                    imageVector = Icons.Filled.FastRewind,
+                    contentDescription = stringResource(R.string.player_rewind_cd, rewindSeconds),
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -201,17 +201,17 @@ fun NowPlayingBar(
                     modifier = Modifier.size(24.dp),
                 )
             }
-            IconButton(onClick = { scope.launch { transport.nextChapter() } }) {
-                Icon(
-                    imageVector = Icons.Filled.SkipNext,
-                    contentDescription = stringResource(R.string.player_skip_next_cd),
-                    modifier = Modifier.size(24.dp),
-                )
-            }
             IconButton(onClick = { scope.launch { transport.forward() } }) {
                 Icon(
                     imageVector = Icons.Filled.FastForward,
                     contentDescription = stringResource(R.string.player_forward_cd, forwardSeconds),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            IconButton(onClick = { scope.launch { transport.nextChapter() } }) {
+                Icon(
+                    imageVector = Icons.Filled.SkipNext,
+                    contentDescription = stringResource(R.string.player_skip_next_cd),
                     modifier = Modifier.size(24.dp),
                 )
             }
