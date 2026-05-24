@@ -664,6 +664,7 @@ internal class PlaybackController(
         val chapterCount = c.mediaItemCount
         if (chapterCount == 0) {
             c.seekTo(positionInBookMs.coerceAtLeast(0L))
+            positionMs.value = positionInBookMs.coerceAtLeast(0L)
             return@onMain
         }
         // Walk forward summing item durations until we land in the bucket. C.TIME_UNSET means
@@ -685,7 +686,22 @@ internal class PlaybackController(
             idx += 1
         }
         c.seekTo(idx, remaining)
-        positionMs.value = positionInBookMs
+        if (chapterCount == 1) {
+            // SingleFile: positionMs is book-absolute (projection doesn't add chapter offset).
+            positionMs.value = positionInBookMs.coerceAtLeast(0L)
+        } else {
+            // MultiFile: positionMs is per-chapter and the projection adds the chapter offset.
+            // Update snap.currentItemIndex BEFORE positionMs so combine() never emits a frame
+            // where (oldChapter.offset + chapterLocalPosition) projects to a wrong book-absolute
+            // value. Then positionMs lands as chapter-local `remaining`.
+            playerSnapshot.update {
+                it.copy(
+                    currentItemIndex = idx,
+                    currentMediaId = c.getMediaItemAt(idx).mediaId,
+                )
+            }
+            positionMs.value = remaining
+        }
     }
 
     override suspend fun playChapter(chapterIndex: Int, positionInBookMs: Long) {
@@ -704,16 +720,20 @@ internal class PlaybackController(
             is ChapterTapAction.SeekMultiFile -> onMain { c ->
                 pendingSeek = true
                 c.seekTo(decision.index, 0L)
-                positionMs.value = 0L
-                // Read mediaId via `getMediaItemAt(index)` rather than
-                // `c.currentMediaItem` — the latter races with the async
-                // item-transition and can still report the old chapter.
+                // Update snap.currentItemIndex BEFORE positionMs so combine() never emits a
+                // frame where (oldChapter.offset + 0) projects to the start of the OUTGOING
+                // chapter — that race showed up as a jump-to-previous-chapter flash before
+                // the listener-driven snap correction landed.
+                // Read mediaId via `getMediaItemAt(index)` rather than `c.currentMediaItem` —
+                // the latter races with the async item-transition and can still report the
+                // old chapter.
                 playerSnapshot.update {
                     it.copy(
                         currentItemIndex = decision.index,
                         currentMediaId = c.getMediaItemAt(decision.index).mediaId,
                     )
                 }
+                positionMs.value = 0L
                 if (!c.isPlaying) c.play()
             }
             ChapterTapAction.Idle -> Unit
