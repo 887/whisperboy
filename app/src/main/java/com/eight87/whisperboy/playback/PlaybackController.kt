@@ -266,22 +266,39 @@ internal class PlaybackController(
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // The chapter index always reflects reality post-transition, so the snapshot is safe
+            // to update on every transition (it's what drives the chapter highlight).
             playerSnapshot.update {
                 it.copy(
                     currentMediaId = mediaItem?.mediaId,
                     currentItemIndex = controller?.currentMediaItemIndex ?: 0,
                 )
             }
-            // A media-item transition is an event-driven projection tick (R.C.5).
-            controller?.let { c -> positionMs.value = c.currentPosition }
-            // Seek confirmed by Media3 — re-enable the ticker.
-            pendingSeek = false
-            // Phase P.7 — save the resume point at the chapter boundary. The new chapter index
-            // is already on the snapshot above; position is whatever the controller reports
-            // just after the transition (typically ~0 for a natural chapter-end transition,
-            // potentially non-zero for a seek-driven transition — either way, that's the
-            // correct "where the user is" value to persist).
-            saveCurrentPosition()
+
+            // BUG FIX (position-loss / "starts from beginning"): a PLAYLIST_CHANGED transition is
+            // a LOAD, not a listening boundary. `setMediaItems(items, startIndex, startMs)` fires
+            // this synchronously, but Media3 has NOT yet applied the requested resume seek — the
+            // controller's `currentPosition` briefly reports the pre-seek value (0 for a freshly
+            // populated queue; see the same quirk documented at [onPositionDiscontinuity] and the
+            // ticker's `pendingSeek` guard). If we projected / saved here we would (a) flash the
+            // scrubber to ~0 and (b) PERSIST (index, 0) over the real resume point — poisoning the
+            // saved position so the NEXT open starts from the beginning. So on a load we leave the
+            // seeded position + `pendingSeek` untouched and wait for [onPositionDiscontinuity] to
+            // confirm the seek landed; the resume point already in Room stays authoritative until
+            // the 1Hz sampler / pause handler captures the genuine live position.
+            if (reason != androidx.media3.common.Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
+                // A genuine in-playback boundary (AUTO chapter-end, SEEK across an item, REPEAT) —
+                // an event-driven projection tick (R.C.5), and the position is trustworthy here.
+                controller?.let { c -> positionMs.value = c.currentPosition }
+                // Seek confirmed by Media3 — re-enable the ticker.
+                pendingSeek = false
+                // Phase P.7 — save the resume point at the chapter boundary. The new chapter index
+                // is already on the snapshot above; position is whatever the controller reports
+                // just after the transition (typically ~0 for a natural chapter-end transition,
+                // potentially non-zero for a seek-driven transition — either way, that's the
+                // correct "where the user is" value to persist).
+                saveCurrentPosition()
+            }
             // Phase G — broadcast the chapter boundary to the sleep timer. tryEmit is fine here
             // because the SharedFlow has `extraBufferCapacity = 1` and we never miss a meaningful
             // edge (the collector is interested in *that there was* a transition).
@@ -321,6 +338,17 @@ internal class PlaybackController(
                 "whisperboy.playback",
                 "playbackState=${stateName(state)} count=${controller?.mediaItemCount} idx=${controller?.currentMediaItemIndex} pwr=${controller?.playWhenReady}",
             )
+            // STATE_READY is the reliable "the loaded item is prepared and `currentPosition` now
+            // reflects the requested resume seek" signal. It's the safe moment to lift the
+            // `pendingSeek` park set by [startPlayback] — important for a resume-at-0 load, where
+            // [onPositionDiscontinuity] does NOT fire, so without this the ticker + 1Hz sampler
+            // would stay parked forever (scrubber frozen, position never re-saved). For a
+            // resume-from-nonzero load the discontinuity already cleared it; clearing again is
+            // idempotent. We re-sync the projected position from the now-trustworthy controller.
+            if (state == androidx.media3.common.Player.STATE_READY) {
+                pendingSeek = false
+                controller?.let { c -> positionMs.value = c.currentPosition }
+            }
         }
     }
 
@@ -382,7 +410,11 @@ internal class PlaybackController(
         @OptIn(kotlinx.coroutines.FlowPreview::class)
         applicationScope.launch {
             positionMs.sample(POSITION_SAVE_INTERVAL_MS).collect {
-                if (playerSnapshot.value.isPlaying) {
+                // `!pendingSeek` mirrors the ticker's own guard: during the post-`setMediaItems` /
+                // post-seek window the controller's `currentPosition` is not yet settled, and
+                // persisting it would overwrite the real resume point with a transient ~0 (the
+                // "starts from beginning" bug). Saves resume the instant the seek confirms.
+                if (playerSnapshot.value.isPlaying && !pendingSeek) {
                     // Crash fix — this collector runs on the application scope's default
                     // dispatcher, NOT Main. Calling [saveCurrentPosition] directly here would
                     // read [MediaController.currentMediaItemIndex] / `currentPosition` off the
@@ -752,12 +784,64 @@ internal class PlaybackController(
         c.seekTo(target)
     }
 
-    override suspend fun nextChapter() = onMain { c ->
-        if (c.hasNextMediaItem()) c.seekToNextMediaItem()
+    override suspend fun nextChapter() {
+        // BUG FIX ("skip-next does nothing on .m4b"): a SingleFile book is ONE MediaItem with
+        // virtual chapters, so `hasNextMediaItem()` is always false and the old body no-op'd.
+        // Detect the SingleFile case (mediaItemCount == 1) and seek by chapter cue-point instead;
+        // MultiFile keeps the native item-hop.
+        val bookId = targetedBookId.value
+        var count = 0
+        var pos = 0L
+        onMain { c ->
+            count = c.mediaItemCount
+            pos = c.currentPosition
+        }
+        if (count != 1 || bookId == null) {
+            onMain { c -> if (c.hasNextMediaItem()) c.seekToNextMediaItem() }
+            return
+        }
+        val chapters = chapterSource.chaptersFor(bookId)
+        val current = chapterAtPosition(chapters, pos) ?: return
+        val curIdx = chapters.indexOfFirst { it.chapterId == current.chapterId }
+        val next = chapters.getOrNull(curIdx + 1) ?: return // already in the last chapter → no-op
+        onMain { c ->
+            pendingSeek = true
+            c.seekTo(0, next.positionInBookMs)
+            positionMs.value = next.positionInBookMs
+        }
     }
 
-    override suspend fun prevChapter() = onMain { c ->
-        if (c.hasPreviousMediaItem()) c.seekToPreviousMediaItem() else c.seekTo(0L)
+    override suspend fun prevChapter() {
+        // BUG FIX ("skip-previous jumps to book start on .m4b"): same SingleFile root cause as
+        // [nextChapter] — `hasPreviousMediaItem()` is always false for a one-item book, so the old
+        // body fell through to `seekTo(0)`. Seek by chapter cue-point for SingleFile, mirroring the
+        // restart-current-if->3s convention Media3's `seekToPreviousMediaItem()` already applies to
+        // MultiFile (its default `maxSeekToPreviousPositionMs` is 3s).
+        val bookId = targetedBookId.value
+        var count = 0
+        var pos = 0L
+        onMain { c ->
+            count = c.mediaItemCount
+            pos = c.currentPosition
+        }
+        if (count != 1 || bookId == null) {
+            onMain { c -> if (c.hasPreviousMediaItem()) c.seekToPreviousMediaItem() else c.seekTo(0L) }
+            return
+        }
+        val chapters = chapterSource.chaptersFor(bookId)
+        val current = chapterAtPosition(chapters, pos) ?: return
+        val curIdx = chapters.indexOfFirst { it.chapterId == current.chapterId }
+        val intoChapterMs = pos - current.positionInBookMs
+        val target = if (intoChapterMs > PREV_CHAPTER_RESTART_THRESHOLD_MS) {
+            current.positionInBookMs // far enough in → restart the current chapter
+        } else {
+            chapters.getOrNull(curIdx - 1)?.positionInBookMs ?: 0L // else previous chapter / book start
+        }
+        onMain { c ->
+            pendingSeek = true
+            c.seekTo(0, target)
+            positionMs.value = target
+        }
     }
 
     override suspend fun setSpeed(speed: Float) {
@@ -1118,6 +1202,13 @@ internal class PlaybackController(
 
         /** Default rewind / forward seek length (F.3 fallback before the settings collector emits). */
         const val DEFAULT_SEEK_MS = 30_000L
+
+        /**
+         * SingleFile skip-previous restart window: past this far into a chapter, "previous" restarts
+         * the current chapter rather than going to the prior one. Matches Media3's default
+         * `maxSeekToPreviousPositionMs` (3s) so SingleFile and MultiFile books behave identically.
+         */
+        const val PREV_CHAPTER_RESTART_THRESHOLD_MS = 3_000L
 
         /** Default auto-rewind length on long-pause resume (F.4 fallback). */
         const val DEFAULT_AUTO_REWIND_MS = 5_000L
