@@ -842,6 +842,7 @@ private fun sortKeyLabelRes(key: BookSortKey): Int = when (key) {
     BookSortKey.Recent -> R.string.settings_library_sort_recent
     BookSortKey.Title -> R.string.settings_library_sort_title
     BookSortKey.Author -> R.string.settings_library_sort_author
+    BookSortKey.Progress -> R.string.settings_library_sort_progress
 }
 
 @Composable

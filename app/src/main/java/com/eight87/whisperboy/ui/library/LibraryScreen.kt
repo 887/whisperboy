@@ -210,8 +210,12 @@ fun LibraryScreen(
     val searchedBooks = remember(filteredBooks, searchQuery) {
         searchBooks(filteredBooks, searchQuery)
     }
-    val sortedBooks = remember(searchedBooks, sortKey) { sortedBooks(searchedBooks, sortKey) }
-    val sectionStarts = remember(sortedBooks, sortKey) { sectionStartsFor(sortedBooks, sortKey) }
+    val sortedBooks = remember(searchedBooks, sortKey, progressByBookId) {
+        sortedBooks(searchedBooks, sortKey, progressByBookId)
+    }
+    val sectionStarts = remember(sortedBooks, sortKey, progressByBookId) {
+        sectionStartsFor(sortedBooks, sortKey, progressByBookId = progressByBookId)
+    }
 
     val pickFolder = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -1079,6 +1083,7 @@ private fun sortKeyLabel(key: BookSortKey): Int = when (key) {
     BookSortKey.Recent -> R.string.library_sort_recent
     BookSortKey.Title -> R.string.library_sort_title
     BookSortKey.Author -> R.string.library_sort_author
+    BookSortKey.Progress -> R.string.library_sort_progress
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

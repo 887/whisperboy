@@ -44,8 +44,17 @@ fun searchBooks(books: List<BookEntity>, query: String): List<BookEntity> {
 /**
  * Pure-function sort. The comparator instances are constructed per-call so they pick up
  * the current default locale (R.A.Q for collation across languages — Voice does the same).
+ *
+ * [progressByBookId] maps `bookId → book-absolute resume position` (the same map the grid /
+ * list tiles render from). It's only consulted by [BookSortKey.Progress]; the other keys
+ * ignore it, so it defaults to empty for the call sites (and unit tests) that don't sort by
+ * progress.
  */
-fun sortedBooks(books: List<BookEntity>, key: BookSortKey): List<BookEntity> {
+fun sortedBooks(
+    books: List<BookEntity>,
+    key: BookSortKey,
+    progressByBookId: Map<String, Long> = emptyMap(),
+): List<BookEntity> {
     val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
     return when (key) {
         // Recent: `lastPlayedAt` desc, nulls last; ties break on title for stable order.
@@ -61,7 +70,20 @@ fun sortedBooks(books: List<BookEntity>, key: BookSortKey): List<BookEntity> {
                 .thenBy(collator) { it.author.orEmpty() }
                 .thenBy(collator) { it.title }
         )
+        // Progress: fraction-finished desc (closest-to-done first), un-started (0%) bucket
+        // sinks to the end; ties break on title for a stable order.
+        BookSortKey.Progress -> books.sortedWith(
+            compareByDescending<BookEntity> {
+                fractionFinished(progressByBookId[it.bookId] ?: 0L, it.durationMs)
+            }.thenBy(collator) { it.title }
+        )
     }
+}
+
+/** Book-absolute resume fraction, clamped to `0f..1f`. Mirrors the grid tile's progress math. */
+private fun fractionFinished(positionMs: Long, durationMs: Long): Float {
+    if (durationMs <= 0L || positionMs <= 0L) return 0f
+    return (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
 }
 
 /**
@@ -83,6 +105,7 @@ fun sectionStartsFor(
     books: List<BookEntity>,
     key: BookSortKey,
     nowMs: Long = System.currentTimeMillis(),
+    progressByBookId: Map<String, Long> = emptyMap(),
 ): List<Pair<Int, String>> {
     if (books.isEmpty()) return emptyList()
     val labelOf: (BookEntity) -> String = when (key) {
@@ -91,6 +114,9 @@ fun sectionStartsFor(
             if (book.author.isNullOrBlank()) "?" else firstLetterLabel(book.author)
         }
         BookSortKey.Recent -> { book -> recencyBucketLabel(book.lastPlayedAt, nowMs) }
+        BookSortKey.Progress -> { book ->
+            progressBucketLabel(fractionFinished(progressByBookId[book.bookId] ?: 0L, book.durationMs))
+        }
     }
     val seen = mutableSetOf<String>()
     val out = mutableListOf<Pair<Int, String>>()
@@ -104,6 +130,19 @@ fun sectionStartsFor(
 private fun firstLetterLabel(text: String): String {
     val first = text.trimStart().firstOrNull() ?: return "#"
     return if (first.isLetter()) first.uppercaseChar().toString() else "#"
+}
+
+/**
+ * Coarse percent-finished chip label for the fast-scroll track, matching the
+ * [BookSortKey.Progress] descending order: 100% → 75% → 50% → 25% → un-started ("0%").
+ */
+private fun progressBucketLabel(fraction: Float): String = when {
+    fraction >= 1f -> "100%"
+    fraction >= 0.75f -> "75%"
+    fraction >= 0.5f -> "50%"
+    fraction >= 0.25f -> "25%"
+    fraction > 0f -> "1%"
+    else -> "0%"
 }
 
 private fun recencyBucketLabel(lastPlayedAt: Long?, nowMs: Long): String {

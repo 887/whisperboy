@@ -84,6 +84,7 @@
     <string name="library_sort_recent">Zuletzt</string>
     <string name="library_sort_title">Titel</string>
     <string name="library_sort_author">Autor</string>
+    <string name="library_sort_progress">% gehört</string>
     <string name="library_filter_all">Alle</string>
     <string name="library_filter_current">Aktuell</string>
     <string name="library_filter_not_started">Nicht begonnen</string>
@@ -273,6 +274,7 @@
     <string name="settings_library_sort_recent">Zuletzt</string>
     <string name="settings_library_sort_title">Titel</string>
     <string name="settings_library_sort_author">Autor</string>
+    <string name="settings_library_sort_progress">% gehört</string>
     <string name="settings_library_grid_default_title">Standard-Rastermodus</string>
     <string name="settings_library_grid_default_subtitle">Raster- oder Listenlayout für die Bibliothek.</string>
     <string name="settings_library_grid_mode_grid">Raster</string>

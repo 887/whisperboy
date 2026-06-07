@@ -105,6 +105,7 @@
     <string name="library_sort_recent">Recent</string>
     <string name="library_sort_title">Title</string>
     <string name="library_sort_author">Author</string>
+    <string name="library_sort_progress">% finished</string>
     <string name="library_filter_all">All</string>
     <string name="library_filter_current">Current</string>
     <string name="library_filter_not_started">Not started</string>
@@ -294,6 +295,7 @@
     <string name="settings_library_sort_recent">Recent</string>
     <string name="settings_library_sort_title">Title</string>
     <string name="settings_library_sort_author">Author</string>
+    <string name="settings_library_sort_progress">% finished</string>
     <string name="settings_library_grid_default_title">Default grid mode</string>
     <string name="settings_library_grid_default_subtitle">Grid or list layout for the library.</string>
     <string name="settings_library_grid_mode_grid">Grid</string>

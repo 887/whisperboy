@@ -66,6 +66,35 @@ class LibrarySortingTest {
     }
 
     @Test
+    fun `sortedBooks Progress orders closest-to-done first, un-started last`() {
+        val out = sortedBooks(
+            listOf(
+                book("half", "Half"), // 500/1000 = 50%
+                book("done", "Done"), // 900/1000 = 90%
+                book("fresh", "Fresh"), // no entry → 0%
+                book("quarter", "Quarter"), // 250/1000 = 25%
+            ),
+            BookSortKey.Progress,
+            progressByBookId = mapOf("half" to 500L, "done" to 900L, "quarter" to 250L),
+        )
+        assertEquals(listOf("Done", "Half", "Quarter", "Fresh"), out.map { it.title })
+    }
+
+    @Test
+    fun `sectionStartsFor Progress buckets by percent finished`() {
+        val out = sectionStartsFor(
+            listOf(
+                book("done", "Done"), // 100%
+                book("half", "Half"), // 50%
+                book("fresh", "Fresh"), // 0%
+            ),
+            BookSortKey.Progress,
+            progressByBookId = mapOf("done" to 1000L, "half" to 500L),
+        )
+        assertEquals(listOf(0 to "100%", 1 to "50%", 2 to "0%"), out)
+    }
+
+    @Test
     fun `sectionStartsFor Title returns first-letter starts`() {
         val out = sectionStartsFor(
             listOf(

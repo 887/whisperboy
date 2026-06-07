@@ -20,8 +20,9 @@ enum class GridMode { Grid, List }
  * - [Recent] — `lastPlayedAt` descending, never-played books last.
  * - [Title] — collation-aware title ascending.
  * - [Author] — collation-aware author ascending, unknown-author bucket last.
+ * - [Progress] — fraction-finished descending (closest-to-done first), un-started books last.
  */
-enum class BookSortKey { Recent, Title, Author }
+enum class BookSortKey { Recent, Title, Author, Progress }
 
 /**
  * Filter chips above the library grid.
