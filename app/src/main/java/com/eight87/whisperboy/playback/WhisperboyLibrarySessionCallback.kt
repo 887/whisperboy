@@ -308,10 +308,29 @@ class WhisperboyLibrarySessionCallback(
         if (chapters.isEmpty()) {
             throw IllegalStateException("Book ${candidate.bookId} has no chapters")
         }
-        val items = chapters.map { ch -> resumptionMediaItem(candidate, ch) }
-        val startIndex = candidate.currentChapterIndex.coerceIn(0, items.lastIndex)
-        val startPositionMs = candidate.positionInChapterMs.coerceAtLeast(0L)
-        MediaItemsWithStartPosition(ImmutableList.copyOf(items), startIndex, startPositionMs)
+        // SingleFile vs MultiFile dispatch — MUST mirror [PlaybackController.startPlayback], or a
+        // media-button resume (Bluetooth / lockscreen / headset) seeds the wrong position. A
+        // SingleFile book (one fileUri shared across all chapters, e.g. an .m4b with embedded
+        // marks) is ONE MediaItem whose position is book-absolute; seeding it as N items at
+        // (chapterIndex, in-chapter-ms) would play the whole file from the in-chapter offset and
+        // land in the wrong place. MultiFile keeps one item per chapter at (index, in-chapter-ms).
+        val firstUri = chapters.firstOrNull()?.fileUri
+        val isSingleFile = firstUri != null && chapters.all { it.fileUri == firstUri }
+        if (isSingleFile) {
+            val startIdx = candidate.currentChapterIndex.coerceIn(0, chapters.lastIndex)
+            val absolute = (chapters.getOrNull(startIdx)?.positionInBookMs ?: 0L) +
+                candidate.positionInChapterMs.coerceAtLeast(0L)
+            val item = resumptionMediaItem(candidate, chapters[startIdx]).buildUpon()
+                .setMediaId(candidate.bookId)
+                .setUri(firstUri.toUri())
+                .build()
+            MediaItemsWithStartPosition(ImmutableList.of(item), 0, absolute.coerceAtLeast(0L))
+        } else {
+            val items = chapters.map { ch -> resumptionMediaItem(candidate, ch) }
+            val startIndex = candidate.currentChapterIndex.coerceIn(0, items.lastIndex)
+            val startPositionMs = candidate.positionInChapterMs.coerceAtLeast(0L)
+            MediaItemsWithStartPosition(ImmutableList.copyOf(items), startIndex, startPositionMs)
+        }
     }
 
     private fun resumptionMediaItem(book: BookEntity, chapter: ChapterEntity): MediaItem {

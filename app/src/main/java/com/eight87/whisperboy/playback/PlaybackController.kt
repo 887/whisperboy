@@ -1155,6 +1155,22 @@ internal class PlaybackController(
      */
     private fun saveCurrentPositionFromMain(c: MediaController) {
         val bookId = targetedBookId.value ?: return
+        // BUG FIX (position-loss / "starts from 0:00" on cold start): NEVER persist a position
+        // read from a controller that has no queue loaded. On cold start [primeLastPlayedBook]
+        // sets `targetedBookId` (so the mini-player shows the DB resume point) WITHOUT loading
+        // any media items — the controller is connected but empty (`mediaItemCount == 0`). When
+        // Media3 then delivers the freshly-connected player's initial state it fires
+        // `onIsPlayingChanged(false)` → [saveCurrentPosition], which used to read the empty
+        // player's `currentMediaItemIndex = 0` / `currentPosition = 0` and write (0, 0) straight
+        // over the real resume point in Room — silently, while the bar still displayed the
+        // stale-correct value. The next `playBook` then read the zeroed row and started at 0:00.
+        // With no queue, the Room row IS the authoritative resume point; there is nothing live to
+        // capture, so leave it untouched.
+        if (c.mediaItemCount == 0) return
+        // A load / seek is in flight: `currentPosition` is the stale pre-seek value (the same
+        // quirk the ticker's `pendingSeek` guard and [onMediaItemTransition] document). Don't
+        // persist it — wait for STATE_READY / the discontinuity to confirm the real position.
+        if (pendingSeek) return
         val chapterIndex = c.currentMediaItemIndex
         val positionMs = c.currentPosition.coerceAtLeast(0L)
         val now = System.currentTimeMillis()
