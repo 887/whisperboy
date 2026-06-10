@@ -1,6 +1,7 @@
 package com.eight87.whisperboy.ui.library
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -181,6 +182,14 @@ fun LibraryScreen(
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var searchMode by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+
+    // System back / swipe-back gesture while search is open must collapse the search
+    // bar back to the library — NOT fall through to the activity and close the app.
+    // Enabled only in search mode so normal back-at-library keeps its default behaviour.
+    BackHandler(enabled = searchMode) {
+        searchMode = false
+        searchQuery = ""
+    }
     var actionSheetBookId by remember { mutableStateOf<String?>(null) }
     var forgetConfirmBookId by remember { mutableStateOf<String?>(null) }
 
