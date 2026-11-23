@@ -69,6 +69,16 @@
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="androidx.media3.session.MediaSessionService" />
+                <!-- Legacy MediaBrowserService discovery: Android Auto / AAOS browse clients. -->
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+            <!--
+              Voice search ("play <book> on whisperboy"). Media3 routes the query into
+              WhisperboyLibrarySessionCallback.onAddMediaItems as requestMetadata.searchQuery.
+            -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
 

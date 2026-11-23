@@ -1,5 +1,7 @@
 package com.eight87.whisperboy.playback
 
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import android.content.Context
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -25,6 +27,7 @@ import androidx.media3.exoplayer.ExoPlayer
  * [OnlyAudioRenderersFactory] so the session callback's `setGainDb` flow can just call
  * `volumeGain.setGainDb(...)` and the next audio frame picks up the new multiplier.
  */
+@OptIn(UnstableApi::class)
 class PlayerHolder(context: Context) {
 
     val volumeGain: VolumeGainAudioProcessor = VolumeGainAudioProcessor()

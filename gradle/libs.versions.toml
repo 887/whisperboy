@@ -1,75 +1,59 @@
 [versions]
-androidGradlePlugin = "9.0.1"
-androidxCore = "1.18.0"
-androidxLifecycle = "2.10.0"
+androidGradlePlugin = "9.5.2"
+androidxCore = "1.19.1"
+androidxLifecycle = "2.11.1"
 androidxActivity = "1.13.0"
-androidxComposeBom = "2026.03.01"
-# m3-expressive A.1 — pin material3 to 1.5.0-alpha18, the alpha that
-# promotes `MaterialExpressiveTheme` / `expressiveLightColorScheme` to
-# public API. The 1.4.0 stable line (resolved by the BOM above) keeps
-# these `internal` — Kotlin metadata marks them `internal` even though
-# the JVM bytecode is public. Override at the artifact level so the
-# BOM still governs every other Compose artifact. Note:
-# `expressiveDarkColorScheme()` does NOT exist in alpha18 — only the
-# light factory ships; dark stays on `darkColorScheme(...)` and
-# inherits the surface ladder. Drop this override once 1.5.0 stable
-# ships and the BOM picks it up.
-composeMaterial3 = "1.5.0-alpha18"
+androidxComposeBom = "2026.11.01"
 androidxTest = "1.7.0"
 androidxTestExt = "1.3.0"
 androidxTestRunner = "1.7.0"
 androidxTestEspresso = "3.7.0"
-coroutines = "1.10.2"
+coroutines = "1.11.0"
 junit = "4.13.2"
-kotlin = "2.3.20"
-media3 = "1.10.0"
-nav3Core = "1.0.1"
-lifecycleViewmodelNav3 = "2.10.0"
-androidxDataStore = "1.1.7"
+kotlin = "2.4.21"
+media3 = "1.11.1"
+nav3Core = "1.2.2"
+lifecycleViewmodelNav3 = "2.11.1"
+androidxDataStore = "1.3.0"
 androidxDocumentFile = "1.1.0"
-androidxPalette = "1.0.0"
-coil = "3.2.0"
-room = "2.8.4"
-ksp = "2.3.7"
-retrofit = "2.11.0"
-okhttp = "4.12.0"
-paging = "3.3.5"
-kotlinxSerialization = "1.7.3"
-# cold-start-perf F.1 — Baseline Profile generation. AGP 9.0.1 (the
-# version pinned above) requires the 1.5.0-alpha track of the baseline
-# profile + benchmark artifacts; the 1.4.x stable line still expects
-# AGP 8.x and fails with "Module `:app` is not a supported android module".
-# Bump the alpha track when the next 1.5.0 stable lands.
-# profileinstaller 1.4.1 stays stable — runtime side, no AGP coupling.
-androidxBaselineProfile = "1.5.0-alpha06"
-androidxBenchmark = "1.5.0-alpha06"
+androidxPalette = "1.1.0"
+coil = "3.6.3"
+room = "2.8.5"
+ksp = "2.3.14"
+retrofit = "3.0.0"
+okhttp = "5.5.1"
+paging = "3.5.3"
+kotlinxSerialization = "1.13.0"
+# cold-start-perf F.1 — Baseline Profile generation. The 1.5.0 stable line
+# of the baseline profile + benchmark artifacts supports AGP 9.x.
+# profileinstaller is the runtime side, no AGP coupling.
+androidxBaselineProfile = "1.5.0"
+androidxBenchmark = "1.5.0"
 androidxProfileinstaller = "1.4.1"
-# main.md Phase M — AndroidX Glance for the home-screen widget. 1.1.1 is
-# the latest stable as of October 2024; 1.2.0-rc01 exists but we stay on
-# the stable line until it ships. glance-material3 pulls in the theme
+# main.md Phase M — AndroidX Glance for the home-screen widget (stable line). glance-material3 pulls in the theme
 # bridge so the widget can read MaterialTheme.colorScheme.surface /
 # onSurface and stay visually coherent with the rest of the app.
-glance = "1.1.1"
+glance = "1.2.0"
 # oss-licenses A.1 — Cash App's Licensee plugin. Walks the resolved
 # runtime classpath at configuration time, writes a JSON inventory to
 # `app/build/reports/licensee/android<Variant>/artifacts.json`. Apache-2.0
 # itself (build-only, never shipped in the APK).
-licensee = "1.13.0"
+licensee = "1.14.1"
 # Robolectric — JVM-side Android shadows so `Context`-dependent unit tests run
-# without an emulator. 4.14.1 is the current stable line (May 2026) and supports
+# without an emulator. Stable line; supports
 # `@Config(sdk = [34])`. Pairs with `androidx.test:core-ktx` + `ext:junit-ktx`
 # for the AndroidX test runner shims; Compose UI tests under Robolectric reuse
 # the `androidx.compose.ui:ui-test-junit4` artifact already declared via the
 # Compose BOM, plus the `ui-test-manifest` sibling for the host harness.
-robolectric = "4.14.1"
-androidxTestCoreKtx = "1.6.1"
-androidxTestExtJunitKtx = "1.2.1"
+robolectric = "4.18.1"
+androidxTestCoreKtx = "1.7.0"
+androidxTestExtJunitKtx = "1.3.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidxComposeBom" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3"}
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended"}
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui"}
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview"}

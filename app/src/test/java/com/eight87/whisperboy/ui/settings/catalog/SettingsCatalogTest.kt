@@ -57,7 +57,6 @@ class SettingsCatalogTest {
             SettingsCatalog.ID_LIBRARY_SCAN_FILTERS,
             SettingsCatalog.ID_LIBRARY_RESCAN,
             SettingsCatalog.ID_ABOUT,
-            SettingsCatalog.ID_LICENSES,
         )
         ids.forEach { id -> assertNotNull(SettingsCatalog.byId(id)) }
     }

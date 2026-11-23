@@ -42,8 +42,17 @@ class CategoryAccentTest {
     assertEquals(LicensesAccent, accentFor("licenses"))
   }
 
-  @Test fun `accentFor falls back to PlaybackAccent for unknown ids`() {
-    assertEquals(PlaybackAccent, accentFor("not-a-real-id"))
+  @Test fun `accentFor hashes unknown ids deterministically into the category palette`() {
+    val palette = setOf(
+      PlaybackAccent, SleepTimerAccent, LibraryAccent, ThemeAccent, AboutAccent, LicensesAccent,
+    )
+    val ids = listOf("not-a-real-id", "about.app_name", "about.github", "about.license", "")
+    ids.forEach { id ->
+      assert(accentFor(id) in palette) { "accentFor(\"$id\") must come from the palette" }
+      assertEquals(accentFor(id), accentFor(id))
+    }
+    // Sub-rows must not all collapse to one hue (the bug the hash fallback fixed).
+    assert(ids.map(::accentFor).toSet().size > 1) { "unknown ids should spread across the palette" }
   }
 
   @Test fun `category accents are not all identical`() {

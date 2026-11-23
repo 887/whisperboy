@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // cold-start-perf F.1 / F.2 — sibling test module that records the
 // cold-boot path of `:app` via MacrobenchmarkRule + the AndroidX
 // BaselineProfile plugin. Produces app/src/main/baseline-prof.txt,
@@ -15,7 +16,8 @@ plugins {
 
 android {
     namespace = "com.eight87.whisperboy.baselineprofile"
-    compileSdk = 36
+    compileSdk = 37
+    compileSdkMinor = 2
 
     defaultConfig {
         minSdk = 28
@@ -24,15 +26,17 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     targetProjectPath = ":app"
 }
 
 kotlin {
-    jvmToolchain(17)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }
 
 baselineProfile {

@@ -39,7 +39,14 @@ set -euo pipefail
 ROOT="$(dirname "$(readlink -f "$0")")/.."
 cd "${ROOT}"
 
-export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-26-openjdk}"
+# Toolchain: honour JAVA_HOME if set, else pick the newest installed full JDK
+# (one with javac). Hardcoding a version broke when java-26 was replaced.
+if [ -z "${JAVA_HOME:-}" ] || [ ! -x "${JAVA_HOME}/bin/javac" ]; then
+    for _jdk in $(ls -d /usr/lib/jvm/java-*-openjdk 2>/dev/null | sort -V -r); do
+        if [ -x "${_jdk}/bin/javac" ]; then export JAVA_HOME="${_jdk}"; break; fi
+    done
+fi
+export JAVA_HOME
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 
 APP_ID="com.eight87.whisperboy"

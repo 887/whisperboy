@@ -177,7 +177,8 @@ fun WhisperboyTheme(
   //     tier stays readable.
   //   - other surface tokens stay opaque — Cards / placeholder
   //     containers need solid backgrounds for legibility.
-  val coverPath = (nowPlayingState.state.value as? com.eight87.whisperboy.playback.PlaybackUiState.Loaded)?.book?.coverPath
+  val playbackUiState by nowPlayingState.state.collectAsStateWithLifecycle()
+  val coverPath = (playbackUiState as? com.eight87.whisperboy.playback.PlaybackUiState.Loaded)?.book?.coverPath
   val backgroundActive = tintByAlbumArt && albumArtBackgroundEnabled && !coverPath.isNullOrBlank()
   val colorScheme = if (!backgroundActive) tintedScheme else {
     // Cover-wallpaper mode. `background` (the Scaffold container) goes transparent

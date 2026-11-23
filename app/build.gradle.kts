@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -37,7 +38,8 @@ val buildDateUtc: String = DateTimeFormatter.ISO_LOCAL_DATE
 
 android {
     namespace = "com.eight87.whisperboy"
-    compileSdk = 36
+    compileSdk = 37
+    compileSdkMinor = 2
     base {
         archivesName.set("whisperboy")
     }
@@ -58,8 +60,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
       compose = true
@@ -125,16 +127,22 @@ androidComponents {
             }
             into(licensesAssetDir)
         }
-        afterEvaluate {
-            tasks.named("merge${variantName}Assets").configure {
-                dependsOn(copyTask)
-            }
+        // Everything that reads `src/main/assets` for this variant must run after the
+        // copy: the assets merge, plus lint's model/analysis tasks (Gradle 9.9 fails the
+        // build on the otherwise-implicit dependency).
+        tasks.matching { task ->
+            task.name == "merge${variantName}Assets" ||
+                (task.name.contains(variantName) && task.name.contains("lint", ignoreCase = true))
+        }.configureEach {
+            dependsOn(copyTask)
         }
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }
 
 dependencies {

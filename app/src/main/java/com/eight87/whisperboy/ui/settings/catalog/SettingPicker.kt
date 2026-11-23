@@ -13,6 +13,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import com.eight87.whisperboy.ui.common.rememberHoistedSliderState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -134,10 +135,12 @@ fun SettingPickerState.SliderPicker(
                 )
                 Spacer(Modifier.height(12.dp))
                 Slider(
-                    value = draft,
+                    state = rememberHoistedSliderState(
+                        value = draft,
+                        valueRange = valueRange,
+                        steps = steps,
+                    ),
                     onValueChange = { draft = it },
-                    valueRange = valueRange,
-                    steps = steps,
                 )
                 if (onReset != null) {
                     Spacer(Modifier.height(4.dp))

@@ -3,7 +3,6 @@ package com.eight87.whisperboy.playback
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -46,11 +45,20 @@ class VolumeGainAudioProcessorTest {
     }
 
     @Test
-    fun `isActive false when gainDb is zero`() {
+    fun `isActive true at zero gainDb so later gain changes apply without reconfigure`() {
         val p = VolumeGainAudioProcessor()
         p.configureAndFlush(pcm16Format())
-        // gainDb defaults to 0
-        assertFalse("0 dB should be bypass", p.isActive)
+        // gainDb defaults to 0. The processor stays active (bit-exact pass-through) so a later
+        // setGainDb from the UI takes effect without waiting for a sink reconfigure.
+        assertTrue("0 dB on PCM 16-bit must stay active", p.isActive)
+    }
+
+    @Test
+    fun `queueInput is a bit-exact pass-through at zero gainDb`() {
+        val p = VolumeGainAudioProcessor()
+        p.configureAndFlush(pcm16Format())
+        val samples = shortArrayOf(0, 1, -1, 1234, -1234, Short.MAX_VALUE, Short.MIN_VALUE)
+        assertEquals(samples.toList(), processSamples(p, samples).toList())
     }
 
     @Test

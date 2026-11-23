@@ -36,7 +36,6 @@ import com.eight87.whisperboy.ui.settings.catalog.SettingsSearchScreen
             onBack = { backStack.removeLastOrNull() },
             onLibraryFoldersClick = { backStack.add(LibraryFoldersRoute) },
             onAboutClick = { backStack.add(AboutRoute) },
-            onLicensesClick = { backStack.add(LicensesRoute) },
             onOpenSearch = { backStack.add(SettingsSearchRoute) },
             modifier = Modifier.safeDrawingPadding(),
         )

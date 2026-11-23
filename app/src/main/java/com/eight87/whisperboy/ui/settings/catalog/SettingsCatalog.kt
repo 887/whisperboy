@@ -28,7 +28,6 @@ import com.eight87.whisperboy.R
 import com.eight87.whisperboy.theme.AboutAccent
 import com.eight87.whisperboy.theme.CategoryAccent
 import com.eight87.whisperboy.theme.LibraryAccent
-import com.eight87.whisperboy.theme.LicensesAccent
 import com.eight87.whisperboy.theme.PlaybackAccent
 import com.eight87.whisperboy.theme.SleepTimerAccent
 import com.eight87.whisperboy.theme.ThemeAccent
@@ -144,7 +143,6 @@ object SettingsCatalog {
     const val ID_LIBRARY_RESCAN = "library.rescan"
 
     const val ID_ABOUT = "about.about"
-    const val ID_LICENSES = "about.licenses"
 
     /**
      * All entries in display order. The page renderer iterates this

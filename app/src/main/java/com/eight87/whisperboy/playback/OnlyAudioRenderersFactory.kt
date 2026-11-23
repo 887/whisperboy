@@ -1,5 +1,7 @@
 package com.eight87.whisperboy.playback
 
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import android.content.Context
 import android.os.Handler
 import androidx.media3.common.audio.AudioProcessor
@@ -20,10 +22,10 @@ import androidx.media3.exoplayer.video.VideoRendererEventListener
  * pre-amp lives inside Media3's audio path (rather than an external `LoudnessEnhancer`). The
  * processor is held by the caller (typically [PlayerHolder]) and its `setGainDb` knob is driven
  * by [PlaybackController] / [WhisperboyLibrarySessionCallback]; this factory just hands the
- * same instance to the [DefaultAudioSink] builder. The processor reports `isActive = false` at
- * 0 dB so the sink elides it from the chain entirely (bit-exact bypass) until a non-zero gain
- * is set.
+ * same instance to the [DefaultAudioSink] builder. The processor stays active at 0 dB (a
+ * bit-exact pass-through) so later gain changes apply without a sink reconfigure.
  */
+@OptIn(UnstableApi::class)
 class OnlyAudioRenderersFactory(
     context: Context,
     private val volumeGain: VolumeGainAudioProcessor,

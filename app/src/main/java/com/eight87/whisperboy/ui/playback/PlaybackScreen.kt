@@ -46,6 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import com.eight87.whisperboy.ui.common.rememberHoistedSliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -333,11 +334,13 @@ private fun PlaybackOptionsSheet(
                     )
                 }
                 Slider(
-                    value = speed.coerceIn(0.5f, 3.5f),
+                    state = rememberHoistedSliderState(
+                        value = speed.coerceIn(0.5f, 3.5f),
+                        valueRange = 0.5f..3.5f,
+                        // (3.5 - 0.5) / 0.05 = 60 internal positions, minus the 2 endpoints = 59 steps.
+                        steps = 59,
+                    ),
                     onValueChange = onSpeedChange,
-                    valueRange = 0.5f..3.5f,
-                    // (3.5 - 0.5) / 0.05 = 60 internal positions, minus the 2 endpoints = 59 steps.
-                    steps = 59,
                 )
                 TextButton(
                     onClick = { onSpeedChange(1.0f) },
@@ -381,11 +384,13 @@ private fun PlaybackOptionsSheet(
                     )
                 }
                 Slider(
-                    value = gainDb.coerceIn(-3f, 12f),
+                    state = rememberHoistedSliderState(
+                        value = gainDb.coerceIn(-3f, 12f),
+                        valueRange = -3f..12f,
+                        // (12 - -3) / 0.5 = 30 internal positions, minus the 2 endpoints = 29 steps.
+                        steps = 29,
+                    ),
                     onValueChange = onGainChange,
-                    valueRange = -3f..12f,
-                    // (12 - -3) / 0.5 = 30 internal positions, minus the 2 endpoints = 29 steps.
-                    steps = 29,
                 )
             }
 
@@ -774,7 +779,10 @@ internal fun PlayerScrubber(
     var dragValue by remember(positionInChapterMs) { mutableStateOf<Float?>(null) }
     val sliderValue = dragValue ?: safePosition.toFloat()
     Slider(
-        value = sliderValue.coerceIn(0f, safeDuration.toFloat()),
+        state = rememberHoistedSliderState(
+            value = sliderValue.coerceIn(0f, safeDuration.toFloat()),
+            valueRange = 0f..safeDuration.toFloat(),
+        ),
         onValueChange = { dragValue = it },
         onValueChangeFinished = {
             dragValue?.let { onSeek(it.toLong()) }
@@ -782,7 +790,6 @@ internal fun PlayerScrubber(
             // key handles that once the new position lands. Clearing eagerly
             // would re-introduce the flash.
         },
-        valueRange = 0f..safeDuration.toFloat(),
         enabled = chapterDurationMs > 0L,
         modifier = Modifier
             .fillMaxWidth()

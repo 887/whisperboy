@@ -105,7 +105,7 @@
     <string name="library_sort_recent">Recent</string>
     <string name="library_sort_title">Title</string>
     <string name="library_sort_author">Author</string>
-    <string name="library_sort_progress">% finished</string>
+    <string name="library_sort_progress" formatted="false">% finished</string>
     <string name="library_filter_all">All</string>
     <string name="library_filter_current">Current</string>
     <string name="library_filter_not_started">Not started</string>
@@ -283,8 +283,6 @@
     <string name="settings_catalog_library_rescan_subtitle">Force a full library rescan.</string>
     <string name="settings_catalog_about_label">About</string>
     <string name="settings_catalog_about_subtitle">Version, license, credits.</string>
-    <string name="settings_catalog_licenses_label">Open-source licenses</string>
-    <string name="settings_catalog_licenses_subtitle">Third-party libraries and their licenses.</string>
 
     <!-- settings_library_ — Library settings hub + K.4 sub-screens (Phase K.4 sub-screens) -->
     <string name="settings_library_hub_title">Library</string>
@@ -295,7 +293,7 @@
     <string name="settings_library_sort_recent">Recent</string>
     <string name="settings_library_sort_title">Title</string>
     <string name="settings_library_sort_author">Author</string>
-    <string name="settings_library_sort_progress">% finished</string>
+    <string name="settings_library_sort_progress" formatted="false">% finished</string>
     <string name="settings_library_grid_default_title">Default grid mode</string>
     <string name="settings_library_grid_default_subtitle">Grid or list layout for the library.</string>
     <string name="settings_library_grid_mode_grid">Grid</string>

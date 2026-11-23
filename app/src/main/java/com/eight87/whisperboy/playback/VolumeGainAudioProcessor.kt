@@ -1,5 +1,7 @@
 package com.eight87.whisperboy.playback
 
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
@@ -13,7 +15,7 @@ import kotlin.math.pow
  * Phase J.3 — per-book volume pre-amp implemented as a Media3 [BaseAudioProcessor].
  *
  * Multiplies every 16-bit signed PCM sample by `10^(gainDb / 20)` before the audio sink writes
- * it to the AudioTrack. `gainDb = 0` is a bit-exact bypass (processor reports `isActive = false`).
+ * it to the AudioTrack. `gainDb = 0` is a bit-exact pass-through (the processor stays active).
  *
  * Range chosen at the UI layer (-3 dB .. +12 dB); this processor accepts any finite Float and
  * clips the resulting sample to the signed-16-bit range so a +12 dB pass doesn't wrap.
@@ -34,6 +36,7 @@ import kotlin.math.pow
  * 16-bit PCM in our config, so per-book speed + skip-silence still works alongside the gain
  * processor — gain is applied to Sonic's output, not its input.
  */
+@OptIn(UnstableApi::class)
 class VolumeGainAudioProcessor : BaseAudioProcessor() {
 
     @Volatile
@@ -58,7 +61,7 @@ class VolumeGainAudioProcessor : BaseAudioProcessor() {
     // bit-exact pass-through — the only cost of always-on is a sample-rate
     // multiply we'd otherwise skip, which is negligible against decode + Sonic.
     override fun isActive(): Boolean =
-        inputAudioFormat.encoding == C.ENCODING_PCM_16BIT
+        super.isActive() && inputAudioFormat.encoding == C.ENCODING_PCM_16BIT
 
     override fun onConfigure(
         inputAudioFormat: AudioProcessor.AudioFormat,

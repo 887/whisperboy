@@ -1,5 +1,7 @@
 package com.eight87.whisperboy.playback
 
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
@@ -15,6 +17,7 @@ import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSession.ControllerInfo
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.eight87.whisperboy.R
 import com.eight87.whisperboy.data.library.BookEntity
@@ -49,6 +52,7 @@ import java.io.File
  * [SleepTimerCommands]. It never sees the concrete `PlaybackController` /
  * `LibraryRepository`.
  */
+@OptIn(UnstableApi::class)
 class WhisperboyLibrarySessionCallback(
     context: Context,
     private val bookSource: BookSource,
@@ -105,7 +109,7 @@ class WhisperboyLibrarySessionCallback(
     ): ListenableFuture<LibraryResult<MediaItem>> = scope.future {
         val item = resolveItem(mediaId)
         if (item != null) LibraryResult.ofItem(item, null)
-        else LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+        else LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
     }
 
     override fun onGetChildren(
@@ -131,7 +135,7 @@ class WhisperboyLibrarySessionCallback(
         if (children != null) {
             LibraryResult.ofItemList(ImmutableList.copyOf(children), params)
         } else {
-            LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+            LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
         }
     }
 
@@ -396,7 +400,7 @@ class WhisperboyLibrarySessionCallback(
                 volumeGain.setGainDb(gainDb)
                 SessionResult(SessionResult.RESULT_SUCCESS)
             }
-            else -> SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED)
+            else -> SessionResult(SessionError.ERROR_NOT_SUPPORTED)
         }
     }
 

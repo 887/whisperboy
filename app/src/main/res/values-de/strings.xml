@@ -84,7 +84,7 @@
     <string name="library_sort_recent">Zuletzt</string>
     <string name="library_sort_title">Titel</string>
     <string name="library_sort_author">Autor</string>
-    <string name="library_sort_progress">% gehört</string>
+    <string name="library_sort_progress" formatted="false">% gehört</string>
     <string name="library_filter_all">Alle</string>
     <string name="library_filter_current">Aktuell</string>
     <string name="library_filter_not_started">Nicht begonnen</string>
@@ -262,8 +262,6 @@
     <string name="settings_catalog_library_rescan_subtitle">Vollständigen Neu-Scan der Bibliothek erzwingen.</string>
     <string name="settings_catalog_about_label">Über</string>
     <string name="settings_catalog_about_subtitle">Version, Lizenz, Mitwirkende.</string>
-    <string name="settings_catalog_licenses_label">Open-Source-Lizenzen</string>
-    <string name="settings_catalog_licenses_subtitle">Drittanbieter-Bibliotheken und ihre Lizenzen.</string>
 
     <!-- settings_library_ — Bibliotheks-Einstellungen und Unterseiten -->
     <string name="settings_library_hub_title">Bibliothek</string>
@@ -274,7 +272,7 @@
     <string name="settings_library_sort_recent">Zuletzt</string>
     <string name="settings_library_sort_title">Titel</string>
     <string name="settings_library_sort_author">Autor</string>
-    <string name="settings_library_sort_progress">% gehört</string>
+    <string name="settings_library_sort_progress" formatted="false">% gehört</string>
     <string name="settings_library_grid_default_title">Standard-Rastermodus</string>
     <string name="settings_library_grid_default_subtitle">Raster- oder Listenlayout für die Bibliothek.</string>
     <string name="settings_library_grid_mode_grid">Raster</string>
@@ -348,8 +346,6 @@
     <string name="about_version_format">Version %1$s (%2$s)</string>
     <string name="about_license">Lizenz</string>
     <string name="about_license_subtitle">Lizenziert unter MIT</string>
-    <string name="about_sibling_title">Geistiges Geschwister</string>
-    <string name="about_sibling_body">Whisperboy ist kein Fork. Voice (GPLv3, von Paul Woitaschek) ist das nächste funktionale Pendant — gleiche SAF-basierte Bibliotheksstruktur, vier Ordnermodi, Schlaftimer mit Ausblenden, MediaLibraryService für Android Auto. Whisperboy ist von Grund auf in Kotlin und Compose unter MIT geschrieben; wir kopieren keinen Code.</string>
     <string name="about_github_label">GitHub</string>
     <string name="about_oss_licenses_label">Open-Source-Lizenzen</string>
     <string name="about_oss_licenses_subtitle">In diesem Build enthaltene Komponenten</string>

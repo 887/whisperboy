@@ -69,7 +69,6 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onLibraryFoldersClick: () -> Unit,
     onAboutClick: () -> Unit,
-    onLicensesClick: () -> Unit,
     onOpenSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -83,7 +82,6 @@ fun SettingsScreen(
         libraryRescanCoordinator = libraryRescanCoordinator,
         onLibraryFolders = onLibraryFoldersClick,
         onAbout = onAboutClick,
-        onLicenses = onLicensesClick,
         snackbarHostState = snackbarHostState,
     )
 

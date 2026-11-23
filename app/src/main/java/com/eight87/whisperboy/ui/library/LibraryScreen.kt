@@ -68,7 +68,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -80,6 +81,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -202,11 +204,12 @@ fun LibraryScreen(
     // on completion — race-free.
     val running = rescanState as? RescanState.Running
     val context = LocalContext.current
+    val resources = LocalResources.current
     LaunchedEffect(libraryRescanCoordinator) {
         libraryRescanCoordinator.scanSummaries.collect { summary ->
             if (summary.newBooks > 0) {
                 snackbarHostState.showSnackbar(
-                    message = context.getString(
+                    message = resources.getString(
                         R.string.library_scan_progress_complete_format,
                         summary.newBooks,
                     ),
@@ -507,7 +510,10 @@ private fun BookActionSheet(
     onForget: () -> Unit,
     onViewByAuthor: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     val isCompleted = book.completedAt != null
     val refreshContext = LocalContext.current
     // m3-expressive D.3 — pin sheet container to the M3E `surfaceContainer` tier
@@ -1101,7 +1107,10 @@ private fun ManageFoldersFolderTypeSheet(
     onDismiss: () -> Unit,
     onSelect: (com.eight87.whisperboy.data.library.FolderType) -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     // m3-expressive D.3 — same M3E sheet tier + accented drag handle as the
     // long-press action sheet; folder-type picker is also a library surface.
     ModalBottomSheet(

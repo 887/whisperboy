@@ -1,5 +1,7 @@
 package com.eight87.whisperboy.playback
 
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -31,6 +33,7 @@ import kotlinx.coroutines.cancel
  * for an ongoing media session). This keeps the system MediaStyle rendering
  * (action buttons + lock-screen art) without us hand-rolling the notification.
  */
+@OptIn(UnstableApi::class)
 class PlaybackService : MediaLibraryService() {
 
     private var session: MediaLibrarySession? = null

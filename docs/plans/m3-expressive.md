@@ -19,7 +19,8 @@ shrink), `2bb042e` (auto-accent + retune splash to 60 %).
    (the alpha that promoted them). Note: `expressiveDarkColorScheme()`
    does NOT exist in 1.5.0-alpha18 — only the light factory ships;
    dark stays on `darkColorScheme(...)` and inherits the surface
-   ladder.
+   ladder. (Now on material3 1.5.0 stable via the Compose BOM; the
+   alpha override was dropped.)
 2. **`surfaceContainer` is too quiet on AMOLED-leaning dark
    palettes.** Use `surfaceContainerHigh` for the card container
    colour. Light mode at `surfaceContainer` is fine; revisit if/when

@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -75,7 +76,6 @@ data class SettingsBindings(
     val libraryRescanCoordinator: LibraryRescanCoordinator,
     val onLibraryFolders: () -> Unit,
     val onAbout: () -> Unit,
-    val onLicenses: () -> Unit,
     val snackbarHostState: SnackbarHostState,
 )
 
@@ -144,7 +144,6 @@ private fun RenderEntry(entry: SettingsCatalogEntry, bindings: SettingsBindings)
         SettingsCatalog.ID_LIBRARY_RESCAN -> LibraryRescanRow(entry, bindings.libraryRescanCoordinator)
 
         SettingsCatalog.ID_ABOUT -> AboutRow(entry, bindings.onAbout)
-        SettingsCatalog.ID_LICENSES -> LicensesRow(entry, bindings.onLicenses)
     }
 }
 
@@ -617,13 +616,13 @@ private fun SleepFadeOutRow(entry: SettingsCatalogEntry, sleepTimerSettings: Sle
         subtitle = stringResource(R.string.settings_sleep_fade_out_format, seconds),
         onClick = picker::show,
     )
-    val context = LocalContext.current
+    val resources = LocalResources.current
     picker.SliderPicker(
         title = stringResource(entry.labelRes),
         initial = seconds.toFloat(),
         valueRange = 0f..60f,
         steps = 59,
-        format = { v -> context.getString(R.string.settings_sleep_fade_out_format, v.toInt()) },
+        format = { v -> resources.getString(R.string.settings_sleep_fade_out_format, v.toInt()) },
         onConfirm = {
             scope.launch { sleepTimerSettings.setFadeOutDuration(it.toInt().coerceIn(0, 60).seconds) }
         },
@@ -938,18 +937,6 @@ private fun LibraryRescanRow(entry: SettingsCatalogEntry, libraryRescanCoordinat
 
 @Composable
 private fun AboutRow(entry: SettingsCatalogEntry, onClick: () -> Unit) {
-    SettingsRow(
-        id = entry.id,
-        accent = entry.accent,
-        icon = entry.icon,
-        label = stringResource(entry.labelRes),
-        subtitle = entry.subtitleRes?.let { stringResource(it) },
-        onClick = onClick,
-    )
-}
-
-@Composable
-private fun LicensesRow(entry: SettingsCatalogEntry, onClick: () -> Unit) {
     SettingsRow(
         id = entry.id,
         accent = entry.accent,
