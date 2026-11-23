@@ -169,8 +169,7 @@ scripts/build-release-apk.sh --gh-release --install
 - Builds the APK and SHA-256-checksums it.
 - Auto-generates release notes from `git log <prev-tag>..HEAD`, including a
   "Verify build" section listing the commit + APK SHA-256.
-- Pushes the local `v<version>-<sha7>` tag to `origin` (informational; the
-  fallback Action is self-disabling).
+- Pushes the local `v<version>-<sha7>` tag to `origin` before creating the release.
 
 By default the APK is signed with Gradle's debug keystore (good enough for
 personal sideload). For production-signed releases set the
@@ -181,30 +180,6 @@ script switches to `assembleRelease`.
 The `release/` directory is gitignored. Each build also writes a
 `release/latest.apk` symlink for convenience.
 
-## GitHub Actions fallback
-
-`.github/workflows/release.yml` is a **fallback** for when the local build
-isn't available — for example, if you're shipping from a phone via the GitHub
-web UI. It triggers **only** on `push: tags: [v*]`; it never runs on regular
-pushes, PRs, or schedule, so the default cost is zero CI minutes.
-
-The workflow is **self-disabling**: at the start of the job it queries the
-matching release; if any asset already matches `whisperboy-*.apk` (which is what
-`scripts/build-release-apk.sh --gh-release` uploaded), it exits 0 without
-rebuilding. So for the normal local-build flow, even though the tag push
-triggers the workflow, no work happens.
-
-To skip CI for a specific tag entirely (e.g. WIP tags), include `[skip ci]` in
-the **annotated tag's message** (lightweight tags don't have a message):
-
-```bash
-git tag -a v1.0-abcdef1 -m "WIP build [skip ci]"
-git push origin v1.0-abcdef1
-```
-
-If you've configured a release-signing keystore, set repo secrets
-`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`, and the
-fallback build will use `assembleRelease` instead of `assembleDebug`.
 
 ## Populate the library + smoke-test
 

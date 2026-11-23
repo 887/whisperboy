@@ -237,11 +237,8 @@ What `--gh-release` does:
 3. Creates the GitHub Release `v<version>-<sha7>` with the APK attached.
 4. Pushes the local annotated tag to `origin`.
 
-The `.github/workflows/release.yml` fallback is **tag-only and self-disabling**:
-it triggers when a `v*` tag is pushed, then queries the matching release; if
-an APK is already attached (which is true after the local script ran), it
-exits 0 without rebuilding. Saves CI minutes by default; only runs when a tag
-shows up without a matching APK (e.g. tag pushed from the GH web UI).
+There is no CI release workflow: releases are only ever built and published
+locally by `scripts/build-release-apk.sh`. Do not add GitHub Actions.
 
 When a phase asks for a release, the happy path is `--gh-release --install`
 against the connected AVD / wifi-adb phone.
