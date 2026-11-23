@@ -191,7 +191,13 @@ EOF
         gh release edit "${REL_TAG}" --notes-file "${NOTES_FILE}" >/dev/null
     else
         echo "[build-release-apk] creating release ${REL_TAG} on GitHub..."
-        gh release create "${REL_TAG}" "${OUT_APK}" \
+        # Tag HEAD locally and push the tag BEFORE creating the release: if the
+        # tag is missing on origin, gh silently creates it on the remote default
+        # branch (the wrong commit). --verify-tag makes that a hard error.
+        git rev-parse -q --verify "refs/tags/${REL_TAG}" >/dev/null \
+            || git tag -a "${REL_TAG}" -m "whisperboy ${TAG}" "${SHA_FULL}"
+        git push origin "refs/tags/${REL_TAG}"
+        gh release create "${REL_TAG}" "${OUT_APK}" --verify-tag \
             --title "whisperboy ${VERSION} (${SHA7})" \
             --notes-file "${NOTES_FILE}"
     fi
