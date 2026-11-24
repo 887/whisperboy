@@ -42,7 +42,7 @@ import java.io.File
  * [onSetMediaItems] as a `requestMetadata.searchQuery` on a single placeholder item;
  * we delegate to [BookSource.search] and fall back to fuzzy author-contains.
  *
- * Custom commands (sleep timer / speed / skip-silence) are registered in [onConnect]
+ * Custom commands (sleep timer / speed / skip-silence) are registered in [onConnectAsync]
  * so Auto's UI surfaces them as action buttons. Phase J's missing pieces (skip
  * silence, gain) log + return success cleanly — the car shouldn't see an error toast
  * for a command we accept but can't yet honour fully.
@@ -72,20 +72,28 @@ class WhisperboyLibrarySessionCallback(
 
     private val appContext = context.applicationContext
 
-    // ---------------------------------------------------------------- onConnect
+    // ---------------------------------------------------------------- onConnectAsync
 
-    override fun onConnect(
+    // Overrides onConnectAsync, not onConnect: since media3 1.11 the default onConnect returns
+    // an internal placeholder (not a real result) so the session falls through to
+    // onConnectAsync. Reading super.onConnect's commands yields an empty Player.Commands, which
+    // silently drops play()/seek from every controller, including our own UI.
+    override fun onConnectAsync(
         session: MediaSession,
         controller: ControllerInfo,
-    ): ConnectionResult {
-        val base = super.onConnect(session, controller)
+    ): ListenableFuture<ConnectionResult> {
+        val base = ConnectionResult.AcceptedResultBuilder(session, controller).build()
         val sessionCommands = base.availableSessionCommands.buildUpon()
             .add(SessionCommand(CustomCommands.SET_SLEEP_TIMER, Bundle.EMPTY))
             .add(SessionCommand(CustomCommands.SET_SPEED, Bundle.EMPTY))
             .add(SessionCommand(CustomCommands.SET_SKIP_SILENCE, Bundle.EMPTY))
             .add(SessionCommand(CustomCommands.SET_GAIN_DB, Bundle.EMPTY))
             .build()
-        return ConnectionResult.accept(sessionCommands, base.availablePlayerCommands)
+        return Futures.immediateFuture(
+            ConnectionResult.AcceptedResultBuilder(session, controller)
+                .setAvailableSessionCommands(sessionCommands)
+                .build(),
+        )
     }
 
     // ---------------------------------------------------------------- browse tree

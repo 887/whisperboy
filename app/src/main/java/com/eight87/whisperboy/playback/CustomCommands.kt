@@ -6,7 +6,7 @@ package com.eight87.whisperboy.playback
  *
  * The strings are stable identifiers in the session-command namespace; Auto's UI
  * picks them up via [androidx.media3.session.SessionCommand] registration in
- * [WhisperboyLibrarySessionCallback.onConnect]. Bundle keys live alongside so
+ * [WhisperboyLibrarySessionCallback.onConnectAsync]. Bundle keys live alongside so
  * the parse / dispatch sides agree on the payload shape.
  *
  * Real handler implementations gate on Phase G (sleep timer) + Phase J (skip
